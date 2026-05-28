@@ -49,22 +49,21 @@ html, body {
     display: none;
 }
 
-/* iCUE / Razer / Aurora — a thin color-sampling target at the screen edge.
+/* iCUE / Razer / Aurora — thin color-sampling targets at the screen edges.
    Wide and short so screen-sampling apps can grab the dominant color
    without picking up too much background. Pure CSS — driven by JS each
    frame to match the marimo's current color. */
-#rgb-sync-bar {
+.rgb-sync-bar {
     position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    height: 6px;
     background: rgb(0, 0, 0);
     pointer-events: none;
     z-index: 8;
     will-change: background-color;
 }
 
-#rgb-sync-bar[hidden] {
-    display: none;
-}
+.rgb-sync-bar[hidden] { display: none; }
+
+#rgb-sync-bottom { left: 0; right: 0; bottom: 0; height: 6px; }
+#rgb-sync-top    { left: 0; right: 0; top:    0; height: 6px; }
+#rgb-sync-left   { top: 0; bottom: 0; left:   0; width:  6px; }
+#rgb-sync-right  { top: 0; bottom: 0; right:  0; width:  6px; }

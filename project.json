@@ -6,7 +6,7 @@
     "preview": "preview.jpg",
     "tags": ["Abstract", "Relaxing"],
     "visibility": "public",
-    "version": 6,
+    "version": 7,
     "general": {
         "properties": {
             "quality": {
@@ -172,9 +172,23 @@
 
             "rgbSync": {
                 "order": 60,
-                "text": "RGB sync mode (iCUE / Razer / Aurora)",
-                "type": "bool",
-                "value": false
+                "text": "RGB sync (iCUE / Razer / Aurora)",
+                "type": "combo",
+                "value": "off",
+                "options": [
+                    { "label": "Off", "value": "off" },
+                    { "label": "Bottom bar (subtle)", "value": "bottom" },
+                    { "label": "Ambilight (all 4 edges)", "value": "ambilight" }
+                ]
+            },
+            "audioReactivity": {
+                "order": 61,
+                "text": "Audio reactivity (music / sounds)",
+                "type": "slider",
+                "value": 0.0,
+                "min": 0.0,
+                "max": 2.0,
+                "step": 0.01
             },
 
             "debugOverlay": {

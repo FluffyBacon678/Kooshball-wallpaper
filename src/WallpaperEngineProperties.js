@@ -145,7 +145,14 @@
                 setDebugVisible(Boolean(value(props.debugOverlay)));
             }
             if (props.rgbSync !== undefined) {
-                if (ctx.setRgbSync) ctx.setRgbSync(Boolean(value(props.rgbSync)));
+                // Tolerate the old bool form (true → "bottom") for users with
+                // a saved value from version <=5 of the wallpaper.
+                let v = value(props.rgbSync);
+                if (typeof v === "boolean") v = v ? "bottom" : "off";
+                if (ctx.setRgbSync) ctx.setRgbSync(String(v));
+            }
+            if (props.audioReactivity !== undefined) {
+                if (ctx.setAudioReactivity) ctx.setAudioReactivity(Number(value(props.audioReactivity)));
             }
         }
 
@@ -154,6 +161,12 @@
             if (props.fps) {
                 const fps = Number(value(props.fps));
                 if (Number.isFinite(fps)) limiter.setTargetFps(fps);
+            }
+            // Wallpaper Engine sends the `paused` general property when the
+            // wallpaper is paused (a game went fullscreen, etc.). When true
+            // we stop simulating + rendering until it flips back.
+            if (props.paused !== undefined) {
+                if (ctx.setPaused) ctx.setPaused(Boolean(value(props.paused)));
             }
         }
 

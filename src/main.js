@@ -16,7 +16,12 @@
     function boot() {
         const canvas = document.getElementById("marimo-canvas");
         const overlay = document.getElementById("debug-overlay");
-        const rgbBar = document.getElementById("rgb-sync-bar");
+        const rgbBars = {
+            bottom: document.getElementById("rgb-sync-bottom"),
+            top:    document.getElementById("rgb-sync-top"),
+            left:   document.getElementById("rgb-sync-left"),
+            right:  document.getElementById("rgb-sync-right")
+        };
         if (!canvas) { console.error("[marimo] canvas missing!"); return; }
         if (typeof THREE === "undefined") {
             console.error("[marimo] Three.js failed to load — check lib/three.min.js");
@@ -230,27 +235,33 @@
             if (e.key === "d" || e.key === "D") setDebugVisible(!debugVisible);
         });
 
-        // ---- RGB sync mode (iCUE / Razer / Aurora). ----
-        // When enabled, render a thin colored bar at the bottom of the screen
-        // showing the marimo's current dominant color. Screen-sampling RGB
-        // hardware software (iCUE Murals, Aurora, Razer Synapse) can target
-        // that bar's region and mirror the color onto user devices in real
-        // time — no native plugin or external companion app needed.
-        let rgbSyncEnabled = false;
+        // ---- RGB sync (iCUE / Razer / Aurora). ----
+        // Three layouts:
+        //   off       — bars hidden, no work each frame
+        //   bottom    — single bar at the bottom edge (minimum visual impact)
+        //   ambilight — all four edges, four sample regions for richer sync
+        //
+        // Screen-sampling RGB hardware software (iCUE Murals, Aurora, Razer
+        // Synapse Chroma Studio) can target these regions and mirror the
+        // color onto user devices in real time — no native plugin needed.
+        let rgbSyncLayout = "off";
         let rgbBarAccum = 0;
-        function setRgbSync(v) {
-            rgbSyncEnabled = !!v;
-            if (rgbBar) rgbBar.hidden = !rgbSyncEnabled;
+        function setRgbSync(layout) {
+            rgbSyncLayout = String(layout || "off");
+            const show = function (id, on) {
+                if (rgbBars[id]) rgbBars[id].hidden = !on;
+            };
+            show("bottom", rgbSyncLayout === "bottom" || rgbSyncLayout === "ambilight");
+            show("top",    rgbSyncLayout === "ambilight");
+            show("left",   rgbSyncLayout === "ambilight");
+            show("right",  rgbSyncLayout === "ambilight");
         }
-        function updateRgbSyncBar(dt) {
-            if (!rgbSyncEnabled || !rgbBar) return;
-            // Throttle to ~30 Hz — the bar doesn't need to update per frame
-            // and DOM style writes are surprisingly expensive at 60+ Hz.
+        function updateRgbSyncBars(dt) {
+            if (rgbSyncLayout === "off") return;
+            // Throttle to ~30 Hz — DOM style writes are expensive at 60+ Hz.
             rgbBarAccum += dt;
             if (rgbBarAccum < 0.033) return;
             rgbBarAccum = 0;
-            // Sample the fur's color sampler near the strand tip — that's
-            // the most saturated/visible color regardless of the mode.
             const sampler = fur._colorSampler;
             if (!sampler) return;
             const c = sampler(0.9, 0, elapsed);
@@ -258,8 +269,63 @@
             const r = Math.round(Math.max(0, Math.min(1, c.r)) * 255);
             const g = Math.round(Math.max(0, Math.min(1, c.g)) * 255);
             const b = Math.round(Math.max(0, Math.min(1, c.b)) * 255);
-            rgbBar.style.backgroundColor = "rgb(" + r + "," + g + "," + b + ")";
+            const css = "rgb(" + r + "," + g + "," + b + ")";
+            // Update only the currently-visible bars.
+            if (rgbBars.bottom && !rgbBars.bottom.hidden) rgbBars.bottom.style.backgroundColor = css;
+            if (rgbSyncLayout === "ambilight") {
+                if (rgbBars.top)   rgbBars.top.style.backgroundColor   = css;
+                if (rgbBars.left)  rgbBars.left.style.backgroundColor  = css;
+                if (rgbBars.right) rgbBars.right.style.backgroundColor = css;
+            }
         }
+
+        // ---- Audio reactivity (Wallpaper Engine forwards system audio). ----
+        // Wallpaper Engine calls our registered callback with a Float32Array
+        // of 128 magnitudes (64 per channel, low→high frequency). We extract
+        // bass and treble bands and apply them as ball impulses and a
+        // transient wind boost — the marimo "dances" to music.
+        let audioReactivity = 0.0;
+        let audioBassLevel = 0;
+        let audioTrebleLevel = 0;
+        function setAudioReactivity(v) {
+            audioReactivity = Math.max(0, Math.min(2, Number(v) || 0));
+        }
+        if (typeof global.wallpaperRegisterAudioListener === "function") {
+            global.wallpaperRegisterAudioListener(function (audioData) {
+                if (!audioData || audioReactivity <= 0) return;
+                // Sum the lowest 6 bins from each channel (bass), highest 6 (treble).
+                let bass = 0, treble = 0;
+                for (let i = 0; i < 6; i++) {
+                    bass   += audioData[i] + audioData[64 + i];
+                    treble += audioData[58 + i] + audioData[122 + i];
+                }
+                bass   /= 12;   // normalize
+                treble /= 12;
+                // Light low-pass smoothing — raw audio bins are jittery.
+                audioBassLevel   = audioBassLevel   * 0.55 + bass   * 0.45;
+                audioTrebleLevel = audioTrebleLevel * 0.55 + treble * 0.45;
+            });
+        }
+        function applyAudioToBall() {
+            if (audioReactivity <= 0) return;
+            const k = audioReactivity;
+            // Bass → upward impulse (the marimo "jumps" on heavy bass beats).
+            if (audioBassLevel > 0.05) {
+                ball.applyImpulse(0, audioBassLevel * 4 * k, 0, 0);
+            }
+            // Treble → bonus angular kick around Y so the body spins
+            // slightly with high-frequency content.
+            if (audioTrebleLevel > 0.05) {
+                ball.angularVelocity.y += audioTrebleLevel * 0.4 * k;
+            }
+        }
+
+        // ---- Pause detection (Wallpaper Engine sends `paused` general prop). ----
+        // When WE pauses the wallpaper (fullscreen game/video) we skip both
+        // simulation and rendering — saves CPU + GPU until the user
+        // alt-tabs back.
+        let paused = false;
+        function setPaused(v) { paused = !!v; }
 
         // ---- Wire Wallpaper Engine properties. ----
         Marimo.WallpaperEngineProperties.attach({
@@ -275,7 +341,9 @@
             setGroundVisible: setGroundVisible,
             setCameraZoom: setCameraZoom,
             rebuildGround: buildGround,
-            setRgbSync: setRgbSync
+            setRgbSync: setRgbSync,
+            setAudioReactivity: setAudioReactivity,
+            setPaused: setPaused
         });
 
         // ---- Windows accent color poll. ----
@@ -352,7 +420,7 @@
 
         function frame(now) {
             global.requestAnimationFrame(frame);
-            if (docHidden) return;
+            if (docHidden || paused) return;
             if (!limiter.shouldRender(now)) return;
 
             // Cap dt for stability — a tab-switch can produce a huge gap.
@@ -361,10 +429,11 @@
             elapsed += dt;
 
             applyMouseToBall(dt);
+            applyAudioToBall();
             ball.update(dt, elapsed);
             fur.update(dt, elapsed);
             renderer.render(scene, camera);
-            updateRgbSyncBar(dt);
+            updateRgbSyncBars(dt);
 
             // Debug overlay (only when visible).
             if (debugVisible) {

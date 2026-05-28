@@ -38,13 +38,16 @@
     <canvas id="marimo-canvas"></canvas>
     <div id="debug-overlay" hidden></div>
     <!--
-        RGB sync bar — a thin strip at the bottom edge of the screen showing
-        the marimo's current dominant color. iCUE Mural / Razer Synapse /
-        Aurora etc. can sample this region and mirror the color onto your
-        hardware. Hidden by default; enable via "RGB sync mode" in the
-        Wallpaper Engine settings.
+        RGB sync bars — thin strips at the screen edges showing the marimo's
+        current dominant color. iCUE Mural / Razer Synapse / Aurora etc. can
+        sample these regions and mirror the color onto your hardware. All
+        hidden by default; enabled by the "RGB sync" combo in Wallpaper
+        Engine settings ("Bottom bar" = bottom only, "Ambilight" = all four).
     -->
-    <div id="rgb-sync-bar" hidden></div>
+    <div class="rgb-sync-bar" id="rgb-sync-bottom" hidden></div>
+    <div class="rgb-sync-bar" id="rgb-sync-top"    hidden></div>
+    <div class="rgb-sync-bar" id="rgb-sync-left"   hidden></div>
+    <div class="rgb-sync-bar" id="rgb-sync-right"  hidden></div>
 
     <!-- Three.js (bundled locally — no CDN, no network at runtime). -->
     <script src="lib/three.min.js"></script>
