@@ -56,21 +56,24 @@
 
     /**
      * Auto-fit camera distance so a sphere of `frameRadius` (ball + hair) fits
-     * comfortably regardless of aspect ratio. We bias slightly toward the
-     * vertical dimension on widescreen displays so the marimo doesn't shrink
-     * to a dot on ultrawide.
+     * comfortably regardless of aspect ratio. The camera is *elevated* above
+     * the marimo (matching the original Marimo demo's view from ~37° above
+     * horizontal) — that angle foreshortens the gravity-induced teardrop
+     * shape into a clean round silhouette while still showing the body's
+     * bounce in 3D.
      */
-    function fitCamera(camera, frameRadius, zoom) {
+    function fitCamera(camera, frameRadius, zoom, elevationDeg, lookAtY) {
+        if (elevationDeg === undefined) elevationDeg = 22;
+        if (lookAtY === undefined) lookAtY = 0;
         const aspect = camera.aspect;
         const vFov = (camera.fov * Math.PI) / 180;
-        // Distance needed to fit vertically.
         let dist = frameRadius / Math.tan(vFov / 2);
-        // ...and horizontally.
         const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
         const distH = frameRadius / Math.tan(hFov / 2);
-        dist = Math.max(dist, distH) * 1.18; // 18% padding so hairs don't touch edges
-        camera.position.set(0, 0, dist * zoom);
-        camera.lookAt(0, 0, 0);
+        dist = Math.max(dist, distH) * 1.18 * zoom;
+        const rad = elevationDeg * Math.PI / 180;
+        camera.position.set(0, dist * Math.sin(rad), dist * Math.cos(rad));
+        camera.lookAt(0, lookAtY, 0);
     }
 
     Marimo.setupScene = createScene;

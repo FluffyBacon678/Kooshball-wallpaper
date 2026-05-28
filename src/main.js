@@ -32,8 +32,9 @@
         const fur = new Marimo.FurSystem(scene, ball, {
             quality: "medium",
             hairAmount: 1.0,
-            hairLength: 4.0,
-            hairVolume: 0.7,
+            // Defaults match the original Marimo demo (Main.hx).
+            hairLength: 3.0,
+            hairVolume: 0.6,
             // Hair gravity is set by the unified Gravity slider via the
             // property bridge. We start at the slider default so the marimo
             // looks right in a non-Wallpaper-Engine browser preview too.
@@ -85,6 +86,11 @@
         // We compute the visible half-extent at the ball's z-plane from the
         // camera's frustum, then hand both that and the camera distance to
         // the ball so it can clamp its motion to the visible frame.
+        // Elevated camera ~22° above horizontal, target slightly below the
+        // ball's settled position — visually matches the original demo and
+        // hides the natural teardrop of a gravity-loaded hair ball.
+        const CAMERA_ELEVATION_DEG = 22;
+        const CAMERA_LOOK_AT_Y = -1.5;
         let cameraZoom = 1.0;
         function refit() {
             const w = window.innerWidth, h = window.innerHeight;
@@ -93,9 +99,12 @@
             camera.aspect = w / h;
             camera.updateProjectionMatrix();
             const frameR = ball.baseRadius + fur._hairLength * 1.1;
-            Marimo.fitCamera(camera, frameR, cameraZoom);
+            Marimo.fitCamera(camera, frameR, cameraZoom,
+                CAMERA_ELEVATION_DEG, CAMERA_LOOK_AT_Y);
 
-            // Visible half-extents at z=0 (where the ball lives).
+            // Visible half-extents — used by ball.setBounds. Compute at the
+            // target Y so the ball can use the full visible frame without
+            // bouncing off invisible walls.
             const dist = camera.position.length();
             const vFov = (camera.fov * Math.PI) / 180;
             const halfH = Math.tan(vFov / 2) * dist;
