@@ -1,0 +1,50 @@
+/* Marimo Wallpaper — full-screen, no chrome, no scrollbars. */
+
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #050708;
+    color: #cfd;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    /* Wallpaper-mode: never select text, never show a caret. */
+    user-select: none;
+    -webkit-user-select: none;
+    cursor: default;
+}
+
+#marimo-canvas {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    display: block;
+    /* Hint the compositor — keeps this off the regular paint path. */
+    will-change: transform;
+}
+
+/* Tiny developer overlay. Hidden by default; toggled by the "debug" user property. */
+#debug-overlay {
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    padding: 8px 12px;
+    background: rgba(0, 0, 0, 0.55);
+    border-radius: 6px;
+    font-size: 12px;
+    line-height: 1.45;
+    color: #aef;
+    pointer-events: none;
+    z-index: 10;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    font-variant-numeric: tabular-nums;
+    white-space: pre;
+}
+
+#debug-overlay[hidden] {
+    display: none;
+}

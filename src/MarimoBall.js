@@ -1,0 +1,273 @@
+/**
+ * MarimoBall — rigid-body sphere with linear + angular dynamics.
+ *
+ * Modeled after saharan's original Marimo.hx (pos/vel/avel) plus the
+ * gravity/restitution/wall handling that Main.hx layered on top. Unlike the
+ * original we don't share screen with HTML controls, so the ball lives inside
+ * an invisible bounded box scaled to the camera's horizontal frustum.
+ *
+ * Defaults are intentionally calm:
+ *   - no auto-spin (users can dial up "Rotation speed" if they want one)
+ *   - low gravity, low restitution → ball settles quickly at the floor
+ *   - mouse motion applies a soft velocity impulse so the marimo can be
+ *     "nudged" around without click+drag (clicks belong to the desktop)
+ *
+ * The FurSystem reads `position`, `radius` and `rotationMatrix` each frame;
+ * everything else is private to this class.
+ */
+(function (global) {
+    const Marimo = global.Marimo = global.Marimo || {};
+
+    class MarimoBall {
+        constructor(scene, opts) {
+            opts = opts || {};
+            this.baseRadius = opts.radius || 5;
+            this.radius = this.baseRadius;
+
+            // --- Rigid-body state ---
+            this.position = new THREE.Vector3(0, 0, 0);
+            this.velocity = new THREE.Vector3(0, 0, 0);
+            this.angularVelocity = new THREE.Vector3(0, 0, 0);
+            this.quaternion = new THREE.Quaternion();
+            this.rotationMatrix = new THREE.Matrix4();
+
+            // --- Tunables (settable at runtime via setters) ---
+            this.physicsEnabled = true;
+            this.gravity = 9.0;            // world-units / s^2
+            this.restitution = 0.6;        // floor + walls bounce
+            this.linearDamping = 0.35;     // per-second exp damping on velocity — low so throws carry
+            this.angularDamping = 0.5;     // per-second exp damping on angular velocity — spins linger
+
+            // When `true` the mouse is dragging the ball: main.js drives
+            // position + velocity directly, physics is skipped this frame.
+            this.grabbed = false;
+
+            // The bounding box. floorY/ceilingY are the y of the floor/ceiling
+            // planes; wallX/wallZ are the |x|/|z| bounds. These are recomputed
+            // by setBounds() from the camera fit so the ball never escapes
+            // the visible frame in any direction.
+            this.floorY = -7;
+            this.ceilingY = 7;
+            this.wallX = 9;
+            this.wallZ = 3.5;
+
+            // Optional constant spin — off by default. Slider in Wallpaper
+            // Engine ("Rotation speed") drives this for users who want
+            // continuous motion.
+            this._autoSpinAxis = new THREE.Vector3(0.15, 1.0, 0.05).normalize();
+            this._autoSpinSpeed = 0;
+
+            // Subtle breathing — 1.8% amplitude. Almost invisible, but it
+            // keeps the strand-tip distance constraints from settling into
+            // a perfectly static lattice.
+            this._breathPhase = Math.random() * Math.PI * 2;
+            this._breathAmp = 0.018;
+
+            // --- Body mesh ---
+            this._geom = new THREE.SphereGeometry(this.baseRadius * 0.98, 48, 32);
+            this._mat = new THREE.MeshStandardMaterial({
+                color: 0x0a160a, roughness: 1.0, metalness: 0.0
+            });
+            this.mesh = new THREE.Mesh(this._geom, this._mat);
+            scene.add(this.mesh);
+
+            // Scratch — avoid per-frame allocation.
+            this._dq = new THREE.Quaternion();
+            this._scratchAxis = new THREE.Vector3();
+        }
+
+        // ---- Configuration setters ----
+
+        setBaseRadius(r) {
+            this.baseRadius = r;
+            this._geom.dispose();
+            this._geom = new THREE.SphereGeometry(r * 0.98, 48, 32);
+            this.mesh.geometry = this._geom;
+        }
+        setBodyColor(rgb) {
+            const d = 0.18;
+            this._mat.color.setRGB(rgb.r * d, rgb.g * d, rgb.b * d);
+        }
+
+        setPhysicsEnabled(v) {
+            this.physicsEnabled = !!v;
+            if (!this.physicsEnabled) {
+                this.velocity.set(0, 0, 0);
+                this.angularVelocity.set(0, 0, 0);
+                this.position.set(0, 0, 0);
+            }
+        }
+        setGravity(v) { this.gravity = Math.max(0, v); }
+        setRestitution(v) { this.restitution = Math.max(0, Math.min(0.95, v)); }
+        setAutoSpinSpeed(v) { this._autoSpinSpeed = v; }
+
+        /**
+         * Recompute the invisible bounding box from a target horizontal extent
+         * (world units that should fit on screen). Called from main.js whenever
+         * the camera refits — so ball stays in view on any aspect ratio.
+         */
+        setBounds(visibleHalfWidth, visibleHalfHeight) {
+            // Reject NaN / 0 / negative inputs — they happen briefly during
+            // page boot when the headless browser hasn't sized the window
+            // yet. Keep the constructor defaults until we get real numbers.
+            if (!Number.isFinite(visibleHalfWidth) || !Number.isFinite(visibleHalfHeight) ||
+                visibleHalfWidth <= 0 || visibleHalfHeight <= 0) {
+                return;
+            }
+            // Leave headroom equal to the ball radius so the silhouette stays
+            // inside the frame even when the ball is at maximum displacement.
+            this.wallX = Math.max(this.baseRadius + 1, visibleHalfWidth - this.baseRadius);
+            this.wallZ = Math.max(this.baseRadius * 0.6, visibleHalfWidth * 0.35);
+            const vHalf = Math.max(this.baseRadius + 1, visibleHalfHeight - this.baseRadius);
+            this.floorY = -vHalf;
+            this.ceilingY =  vHalf;
+        }
+
+        /**
+         * Apply a velocity impulse and a coupled angular kick.
+         * Used by main.js to convert mouse motion into ball motion.
+         */
+        applyImpulse(vx, vy, vz, spinFactor) {
+            if (!this.physicsEnabled) return;
+            this.velocity.x += vx;
+            this.velocity.y += vy;
+            this.velocity.z += vz;
+            if (spinFactor !== 0 && spinFactor !== undefined) {
+                // Angular velocity perpendicular-ish to the push so the ball
+                // looks like it's rolling, not sliding.
+                this.angularVelocity.x +=  vz * spinFactor;
+                this.angularVelocity.y += (vx * 0.3 + vz * 0.3) * spinFactor;
+                this.angularVelocity.z += -vx * spinFactor;
+            }
+        }
+
+        /**
+         * Reset position/velocity to the rest pose. Used when physics is
+         * toggled or when the user changes ball size mid-flight.
+         */
+        resetToRest() {
+            this.position.set(0, Math.max(this.floorY + this.baseRadius, 0), 0);
+            this.velocity.set(0, 0, 0);
+            this.angularVelocity.set(0, 0, 0);
+        }
+
+        // ---- Per-frame update ----
+
+        update(dt, time) {
+            // Cap dt so a frame hitch (alt-tab, GPU stall) can't catapult the
+            // ball across the screen on its next integration step.
+            dt = Math.min(0.033, dt);
+
+            // While the mouse is grabbing the ball, main.js drives position
+            // and velocity each frame. We skip gravity / damping / collisions
+            // entirely — the cursor is the only force. Angular velocity, spin
+            // and the visual transform still update so the ball can roll a
+            // little as it's dragged.
+            if (this.physicsEnabled && !this.grabbed) {
+                // Gravity (downward).
+                this.velocity.y -= this.gravity * dt;
+
+                // Exponential damping — framerate-independent.
+                const linDamp = Math.exp(-this.linearDamping * dt);
+                this.velocity.multiplyScalar(linDamp);
+                const angDamp = Math.exp(-this.angularDamping * dt);
+                this.angularVelocity.multiplyScalar(angDamp);
+
+                // Integrate position.
+                this.position.x += this.velocity.x * dt;
+                this.position.y += this.velocity.y * dt;
+                this.position.z += this.velocity.z * dt;
+
+                // Ceiling collision — keeps the ball inside the visible frame
+                // when thrown straight up.
+                const maxY = this.ceilingY - this.baseRadius;
+                if (this.position.y > maxY) {
+                    this.position.y = maxY;
+                    if (this.velocity.y > 0) this.velocity.y *= -this.restitution;
+                    // A ceiling tap also bleeds a little spin energy.
+                    this.angularVelocity.multiplyScalar(0.92);
+                }
+
+                // Floor collision.
+                const minY = this.floorY + this.baseRadius;
+                if (this.position.y < minY) {
+                    this.position.y = minY;
+                    if (this.velocity.y < 0) this.velocity.y *= -this.restitution;
+                    // Rolling friction. The angular velocity at the contact
+                    // patch becomes lateral linear velocity — ω_z makes the
+                    // ball roll along X, ω_x makes it roll along Z. This is
+                    // what gives a thrown spinning ball motion in 3D rather
+                    // than just sliding flat. We bleed a chunk of angular
+                    // energy in the same step.
+                    const roll = 0.18;
+                    this.velocity.x +=  this.angularVelocity.z * this.baseRadius * roll;
+                    this.velocity.z += -this.angularVelocity.x * this.baseRadius * roll;
+                    this.angularVelocity.x *= (1 - roll);
+                    this.angularVelocity.z *= (1 - roll);
+                    // Mild kinetic friction on the lateral velocity itself.
+                    this.velocity.x *= 0.94;
+                    this.velocity.z *= 0.94;
+                    if (Math.abs(this.velocity.y) < 0.3) this.velocity.y = 0;
+                    // Y-axis spin loses a little energy too.
+                    this.angularVelocity.y *= 0.9;
+                }
+
+                // Side walls (X).
+                const wxR = this.wallX;
+                if (this.position.x > wxR) {
+                    this.position.x = wxR;
+                    if (this.velocity.x > 0) this.velocity.x *= -this.restitution;
+                } else if (this.position.x < -wxR) {
+                    this.position.x = -wxR;
+                    if (this.velocity.x < 0) this.velocity.x *= -this.restitution;
+                }
+
+                // Front/back walls (Z) — narrow so the ball stays near the
+                // camera focal plane.
+                const wzR = this.wallZ;
+                if (this.position.z > wzR) {
+                    this.position.z = wzR;
+                    if (this.velocity.z > 0) this.velocity.z *= -this.restitution;
+                } else if (this.position.z < -wzR) {
+                    this.position.z = -wzR;
+                    if (this.velocity.z < 0) this.velocity.z *= -this.restitution;
+                }
+            }
+
+            // Auto-spin (slider-driven — default 0 means "no auto rotation").
+            if (this._autoSpinSpeed > 1e-5) {
+                this._dq.setFromAxisAngle(this._autoSpinAxis, this._autoSpinSpeed * dt);
+                this.quaternion.premultiply(this._dq);
+            }
+
+            // Angular velocity → quaternion integration (rigid-body spin).
+            const angLen = this.angularVelocity.length();
+            if (angLen > 1e-5) {
+                this._scratchAxis.copy(this.angularVelocity).divideScalar(angLen);
+                this._dq.setFromAxisAngle(this._scratchAxis, angLen * dt);
+                this.quaternion.premultiply(this._dq);
+            }
+
+            // Breathing (radius pulsation, ~1.8% amplitude).
+            const breath = Math.sin(time * 0.6 + this._breathPhase) * this._breathAmp + 1.0;
+            this.radius = this.baseRadius * breath;
+            this.mesh.scale.setScalar(breath);
+
+            // Push state to the mesh.
+            this.mesh.position.copy(this.position);
+            this.mesh.quaternion.copy(this.quaternion);
+
+            // Keep the rotation matrix in sync for the FurSystem.
+            this.rotationMatrix.makeRotationFromQuaternion(this.quaternion);
+        }
+
+        getRotationMatrix() { return this.rotationMatrix; }
+
+        dispose() {
+            this._geom.dispose();
+            this._mat.dispose();
+        }
+    }
+
+    Marimo.MarimoBall = MarimoBall;
+})(window);

@@ -1,0 +1,181 @@
+{
+    "title": "Marimo",
+    "description": "A calm, living hairy ball — a recreation of the Marimo effect by saharan (oimo.io) as a Wallpaper Engine web wallpaper. Verlet hair on a slowly rotating sphere, multiple color modes, and tunable density.",
+    "type": "web",
+    "file": "index.html",
+    "preview": "preview.jpg",
+    "tags": ["Abstract", "Relaxing"],
+    "visibility": "public",
+    "version": 4,
+    "general": {
+        "properties": {
+            "quality": {
+                "order": 1,
+                "text": "Quality preset",
+                "type": "combo",
+                "value": "medium",
+                "options": [
+                    { "label": "Low (3.5k hairs)", "value": "low" },
+                    { "label": "Medium (10k hairs)", "value": "medium" },
+                    { "label": "High (20k hairs)", "value": "high" },
+                    { "label": "Ultra (32k hairs)", "value": "ultra" }
+                ]
+            },
+
+            "ballSize": {
+                "order": 10,
+                "text": "Ball size",
+                "type": "slider",
+                "value": 5,
+                "min": 2,
+                "max": 9,
+                "step": 0.1
+            },
+            "hairAmount": {
+                "order": 11,
+                "text": "Hair amount",
+                "type": "slider",
+                "value": 1.0,
+                "min": 0.1,
+                "max": 1.0,
+                "step": 0.01
+            },
+            "hairLength": {
+                "order": 12,
+                "text": "Hair length",
+                "type": "slider",
+                "value": 4.0,
+                "min": 1.0,
+                "max": 7.0,
+                "step": 0.05
+            },
+            "hairVolume": {
+                "order": 13,
+                "text": "Hair volume",
+                "type": "slider",
+                "value": 0.7,
+                "min": 0.2,
+                "max": 1.0,
+                "step": 0.01
+            },
+
+            "gravity": {
+                "order": 20,
+                "text": "Gravity (ball + hair)",
+                "type": "slider",
+                "value": 0.6,
+                "min": 0.0,
+                "max": 2.5,
+                "step": 0.01
+            },
+            "ballPhysics": {
+                "order": 23,
+                "text": "Ball physics (bounce + move)",
+                "type": "bool",
+                "value": true
+            },
+            "bounce": {
+                "order": 24,
+                "text": "Ball bounce (restitution)",
+                "type": "slider",
+                "value": 0.55,
+                "min": 0.0,
+                "max": 0.9,
+                "step": 0.01
+            },
+            "rotationSpeed": {
+                "order": 21,
+                "text": "Auto-rotation speed",
+                "type": "slider",
+                "value": 0.0,
+                "min": 0.0,
+                "max": 1.0,
+                "step": 0.01
+            },
+            "windStrength": {
+                "order": 22,
+                "text": "Hair wind (advanced)",
+                "type": "slider",
+                "value": 0.0,
+                "min": 0.0,
+                "max": 2.0,
+                "step": 0.01
+            },
+
+            "rgbMode": {
+                "order": 30,
+                "text": "RGB rainbow mode",
+                "type": "bool",
+                "value": false
+            },
+            "colorMode": {
+                "order": 31,
+                "text": "Color mode",
+                "type": "combo",
+                "value": "natural",
+                "options": [
+                    { "label": "Natural (moss green)", "value": "natural" },
+                    { "label": "RGB neon", "value": "rgbNeon" },
+                    { "label": "Blue / cyan", "value": "blueCyan" },
+                    { "label": "Purple / pink", "value": "purplePink" },
+                    { "label": "Custom (two colors)", "value": "custom" },
+                    { "label": "Follow Windows accent", "value": "systemAccent" }
+                ]
+            },
+            "customColor1": {
+                "order": 32,
+                "text": "Custom color (root)",
+                "type": "color",
+                "value": "0.05 0.12 0.20"
+            },
+            "customColor2": {
+                "order": 33,
+                "text": "Custom color (tip)",
+                "type": "color",
+                "value": "0.85 0.95 1.00"
+            },
+
+            "backgroundColor": {
+                "order": 40,
+                "text": "Background color",
+                "type": "color",
+                "value": "0.027 0.035 0.043"
+            },
+            "groundShadow": {
+                "order": 41,
+                "text": "Show ground shadow",
+                "type": "bool",
+                "value": true
+            },
+            "cameraDistance": {
+                "order": 42,
+                "text": "Camera zoom (1 = default)",
+                "type": "slider",
+                "value": 1.0,
+                "min": 0.6,
+                "max": 1.8,
+                "step": 0.01
+            },
+            "bloom": {
+                "order": 43,
+                "text": "Glow (additive blending)",
+                "type": "bool",
+                "value": false
+            },
+
+            "mouseInteraction": {
+                "order": 50,
+                "text": "Mouse interaction",
+                "type": "bool",
+                "value": true
+            },
+
+            "debugOverlay": {
+                "order": 90,
+                "text": "Show debug overlay",
+                "type": "bool",
+                "value": false
+            }
+        }
+    }
+}

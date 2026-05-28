@@ -1,0 +1,12 @@
+{
+    "name": "marimo-wallpaper",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Marimo (hairy ball) wallpaper for Wallpaper Engine — recreated in Three.js. No bundler required.",
+    "scripts": {
+        "dev": "node .dev-server.js",
+        "start": "node .dev-server.js"
+    },
+    "license": "MIT",
+    "//": "There is no build step. All source files are loaded as classic <script> tags so the wallpaper runs directly from index.html via file:// or any static server. `npm run dev` is purely a convenience for browser testing — Wallpaper Engine itself never needs Node."
+}

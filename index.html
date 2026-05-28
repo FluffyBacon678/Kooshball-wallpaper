@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+    <title>Marimo Wallpaper</title>
+    <link rel="stylesheet" href="style.css">
+    <!--
+        Marimo Wallpaper for Wallpaper Engine.
+        Original concept and effect: saharan / oimo.io (MIT). This is an
+        independent recreation in Three.js — no original assets are reused.
+
+        We register window.wallpaperPropertyListener *before* any heavy script
+        loads so Wallpaper Engine never misses the initial property burst.
+    -->
+    <script>
+        (function () {
+            // Pre-register so Wallpaper Engine sees us during initial properties dispatch.
+            // The actual handlers are wired up later by WallpaperEngineProperties.js.
+            window.__MARIMO_PENDING_PROPS__ = { user: null, general: null };
+            window.wallpaperPropertyListener = {
+                applyUserProperties: function (props) {
+                    if (window.__marimoApplyUser__) window.__marimoApplyUser__(props);
+                    else window.__MARIMO_PENDING_PROPS__.user = Object.assign(
+                        window.__MARIMO_PENDING_PROPS__.user || {}, props);
+                },
+                applyGeneralProperties: function (props) {
+                    if (window.__marimoApplyGeneral__) window.__marimoApplyGeneral__(props);
+                    else window.__MARIMO_PENDING_PROPS__.general = Object.assign(
+                        window.__MARIMO_PENDING_PROPS__.general || {}, props);
+                }
+            };
+        })();
+    </script>
+</head>
+<body>
+    <canvas id="marimo-canvas"></canvas>
+    <div id="debug-overlay" hidden></div>
+
+    <!-- Three.js (bundled locally — no CDN, no network at runtime). -->
+    <script src="lib/three.min.js"></script>
+
+    <!-- App code. Classic scripts on purpose: bulletproof for file:// and CEF. -->
+    <script src="src/util/fibonacci.js"></script>
+    <script src="src/util/noise.js"></script>
+    <script src="src/util/colorModes.js"></script>
+    <script src="src/PerformanceLimiter.js"></script>
+    <script src="src/scene/setupScene.js"></script>
+    <script src="src/MarimoBall.js"></script>
+    <script src="src/FurSystem.js"></script>
+    <script src="src/WallpaperEngineProperties.js"></script>
+    <script src="src/main.js"></script>
+</body>
+</html>

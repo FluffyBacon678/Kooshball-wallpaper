@@ -1,0 +1,25 @@
+# --- Node / npm (only if you install anything for browser dev) ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- IDE / OS junk ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Claude Code workspace metadata ---
+.claude/
+
+# --- Optional clean-release snapshot (regenerable from this folder) ---
+# We keep the source as the single source of truth. If you want a clean
+# upload folder, run build-release.ps1 — the output is not committed.
+dist/
+release/
+
+# --- Wallpaper Engine artifacts (if you generate any) ---
+*.wepak
+preview.gif
