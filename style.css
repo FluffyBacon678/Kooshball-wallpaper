@@ -48,3 +48,23 @@ html, body {
 #debug-overlay[hidden] {
     display: none;
 }
+
+/* iCUE / Razer / Aurora — a thin color-sampling target at the screen edge.
+   Wide and short so screen-sampling apps can grab the dominant color
+   without picking up too much background. Pure CSS — driven by JS each
+   frame to match the marimo's current color. */
+#rgb-sync-bar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 6px;
+    background: rgb(0, 0, 0);
+    pointer-events: none;
+    z-index: 8;
+    will-change: background-color;
+}
+
+#rgb-sync-bar[hidden] {
+    display: none;
+}

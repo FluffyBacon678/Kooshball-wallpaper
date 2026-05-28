@@ -16,6 +16,7 @@
     function boot() {
         const canvas = document.getElementById("marimo-canvas");
         const overlay = document.getElementById("debug-overlay");
+        const rgbBar = document.getElementById("rgb-sync-bar");
         if (!canvas) { console.error("[marimo] canvas missing!"); return; }
         if (typeof THREE === "undefined") {
             console.error("[marimo] Three.js failed to load — check lib/three.min.js");
@@ -229,6 +230,37 @@
             if (e.key === "d" || e.key === "D") setDebugVisible(!debugVisible);
         });
 
+        // ---- RGB sync mode (iCUE / Razer / Aurora). ----
+        // When enabled, render a thin colored bar at the bottom of the screen
+        // showing the marimo's current dominant color. Screen-sampling RGB
+        // hardware software (iCUE Murals, Aurora, Razer Synapse) can target
+        // that bar's region and mirror the color onto user devices in real
+        // time — no native plugin or external companion app needed.
+        let rgbSyncEnabled = false;
+        let rgbBarAccum = 0;
+        function setRgbSync(v) {
+            rgbSyncEnabled = !!v;
+            if (rgbBar) rgbBar.hidden = !rgbSyncEnabled;
+        }
+        function updateRgbSyncBar(dt) {
+            if (!rgbSyncEnabled || !rgbBar) return;
+            // Throttle to ~30 Hz — the bar doesn't need to update per frame
+            // and DOM style writes are surprisingly expensive at 60+ Hz.
+            rgbBarAccum += dt;
+            if (rgbBarAccum < 0.033) return;
+            rgbBarAccum = 0;
+            // Sample the fur's color sampler near the strand tip — that's
+            // the most saturated/visible color regardless of the mode.
+            const sampler = fur._colorSampler;
+            if (!sampler) return;
+            const c = sampler(0.9, 0, elapsed);
+            if (!c) return;
+            const r = Math.round(Math.max(0, Math.min(1, c.r)) * 255);
+            const g = Math.round(Math.max(0, Math.min(1, c.g)) * 255);
+            const b = Math.round(Math.max(0, Math.min(1, c.b)) * 255);
+            rgbBar.style.backgroundColor = "rgb(" + r + "," + g + "," + b + ")";
+        }
+
         // ---- Wire Wallpaper Engine properties. ----
         Marimo.WallpaperEngineProperties.attach({
             ball: ball,
@@ -242,7 +274,8 @@
             setDebugVisible: setDebugVisible,
             setGroundVisible: setGroundVisible,
             setCameraZoom: setCameraZoom,
-            rebuildGround: buildGround
+            rebuildGround: buildGround,
+            setRgbSync: setRgbSync
         });
 
         // ---- Windows accent color poll. ----
@@ -331,6 +364,7 @@
             ball.update(dt, elapsed);
             fur.update(dt, elapsed);
             renderer.render(scene, camera);
+            updateRgbSyncBar(dt);
 
             // Debug overlay (only when visible).
             if (debugVisible) {

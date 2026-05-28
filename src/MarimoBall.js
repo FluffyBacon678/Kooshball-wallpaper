@@ -57,11 +57,12 @@
             this._autoSpinAxis = new THREE.Vector3(0.15, 1.0, 0.05).normalize();
             this._autoSpinSpeed = 0;
 
-            // Subtle breathing — 1.8% amplitude. Almost invisible, but it
-            // keeps the strand-tip distance constraints from settling into
-            // a perfectly static lattice.
+            // Very subtle breathing — 0.5% amplitude. Reduced from 1.8% so
+            // the strand-tip distance constraints don't visibly pulse at
+            // the top/bottom of the marimo, while still keeping the
+            // simulation alive enough to avoid a frozen lattice.
             this._breathPhase = Math.random() * Math.PI * 2;
-            this._breathAmp = 0.018;
+            this._breathAmp = 0.005;
 
             // --- Body mesh ---
             this._geom = new THREE.SphereGeometry(this.baseRadius * 0.98, 48, 32);
@@ -117,7 +118,12 @@
             // Leave headroom equal to the ball radius so the silhouette stays
             // inside the frame even when the ball is at maximum displacement.
             this.wallX = Math.max(this.baseRadius + 1, visibleHalfWidth - this.baseRadius);
-            this.wallZ = Math.max(this.baseRadius * 0.6, visibleHalfWidth * 0.35);
+            // Z bounds — significantly wider than before so the ball has
+            // room to travel back into the depth axis. wallZ scales with
+            // the visible width so wide / ultrawide monitors get more 3D
+            // play room. Capped so the ball never gets close enough to the
+            // camera to fill the screen with body alone.
+            this.wallZ = Math.max(this.baseRadius * 1.0, visibleHalfWidth * 0.85);
             const vHalf = Math.max(this.baseRadius + 1, visibleHalfHeight - this.baseRadius);
             this.floorY = -vHalf;
             this.ceilingY =  vHalf;

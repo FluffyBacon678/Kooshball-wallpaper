@@ -24,7 +24,9 @@
     // Quality presets — how many hairs and how many segments.
     // Segments is kept constant across presets so the geometry buffer doesn't
     // need to be re-allocated when the user changes quality at runtime.
-    const SEGMENTS = 6;
+    // 7 segments matches the original Marimo's HAIR_DIV-1. Smoother curve
+    // per strand than 6 with only marginal CPU/GPU cost.
+    const SEGMENTS = 7;
     const POINTS_PER_HAIR = SEGMENTS + 1; // root + N tip points
 
     // Maximum strand counts per quality preset.

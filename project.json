@@ -6,14 +6,14 @@
     "preview": "preview.jpg",
     "tags": ["Abstract", "Relaxing"],
     "visibility": "public",
-    "version": 5,
+    "version": 6,
     "general": {
         "properties": {
             "quality": {
                 "order": 1,
                 "text": "Quality preset",
                 "type": "combo",
-                "value": "medium",
+                "value": "high",
                 "options": [
                     { "label": "Low (3.5k hairs)", "value": "low" },
                     { "label": "Medium (10k hairs)", "value": "medium" },
@@ -168,6 +168,13 @@
                 "text": "Mouse interaction",
                 "type": "bool",
                 "value": true
+            },
+
+            "rgbSync": {
+                "order": 60,
+                "text": "RGB sync mode (iCUE / Razer / Aurora)",
+                "type": "bool",
+                "value": false
             },
 
             "debugOverlay": {

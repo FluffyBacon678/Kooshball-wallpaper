@@ -144,6 +144,9 @@
             if (props.debugOverlay !== undefined) {
                 setDebugVisible(Boolean(value(props.debugOverlay)));
             }
+            if (props.rgbSync !== undefined) {
+                if (ctx.setRgbSync) ctx.setRgbSync(Boolean(value(props.rgbSync)));
+            }
         }
 
         function applyGeneral(props) {
