@@ -68,6 +68,23 @@
             this._pos = new Float32Array(MAX_HAIRS * POINTS_PER_HAIR * 3);
             this._ppos = new Float32Array(MAX_HAIRS * POINTS_PER_HAIR * 3);
 
+            // Per-hair length multiplier. The original Marimo's Main.hx
+            // jitters each hair *vertex* tangentially at construction so the
+            // outer silhouette isn't a perfect deformed sphere — that's what
+            // hides the gravity teardrop and makes the marimo read as a
+            // round fuzzy ball. We achieve the same fluffy variance with a
+            // deterministic per-hair length scale in [0.80, 1.20].
+            this._hairLengthScale = new Float32Array(MAX_HAIRS);
+            {
+                let s = 0x9E3779B9 ^ 0xDEADBEEF; // fixed seed → identical layout each load
+                for (let h = 0; h < MAX_HAIRS; h++) {
+                    s ^= s << 13; s >>>= 0;
+                    s ^= s >>> 17;
+                    s ^= s << 5;  s >>>= 0;
+                    this._hairLengthScale[h] = 0.80 + (s / 0xFFFFFFFF) * 0.40;
+                }
+            }
+
             // --- Three.js renderable ---
             this._geom = new THREE.BufferGeometry();
             this._positionBuffer = new Float32Array(MAX_HAIRS * POINTS_PER_HAIR * 3);
@@ -173,12 +190,13 @@
 
         _initRestState() {
             const radius = this._ball.baseRadius;
-            const segLen = this._hairLength / SEGMENTS;
             for (let h = 0; h < MAX_HAIRS; h++) {
                 const rb = h * 3;
                 const nx = this._rootDir[rb + 0];
                 const ny = this._rootDir[rb + 1];
                 const nz = this._rootDir[rb + 2];
+                // Per-hair segment length — varied so the silhouette is fuzzy.
+                const segLen = (this._hairLength * this._hairLengthScale[h]) / SEGMENTS;
                 for (let i = 0; i <= SEGMENTS; i++) {
                     const r = radius + segLen * i;
                     const off = (h * POINTS_PER_HAIR + i) * 3;
@@ -247,7 +265,8 @@
         update(dt, time) {
             const N = this._activeHairs;
             const radius = this._ball.radius;
-            const segLen = this._hairLength / SEGMENTS;
+            const baseHairLen = this._hairLength;
+            const hairScale = this._hairLengthScale;   // per-hair length multiplier
             // Cap dt tightly — verlet's `accel * dt^2` term spikes hard at
             // big timesteps, which is what users perceive as the marimo
             // "kicking" after a frame hitch. 1/40 s is the floor we promise
@@ -263,7 +282,9 @@
             // gravity up produces *visible* droop quickly.
             const gAcc = -this._gravity * 0.045 * dt60 * dt60;
             const windAmp = this._windStrength * 0.04 * dt60 * dt60;
-            const maxRadius = radius + this._hairLength * this._hairVolume;
+            // Per-hair max radius is derived inside the constraint loop using
+            // the per-hair length scale, so each strand has its own envelope.
+            const volume = this._hairVolume;
 
             const rot = this._ball.getRotationMatrix().elements;
             // Apply rotation to a vector (x,y,z) -> world. THREE matrices are column-major
@@ -333,6 +354,12 @@
                     const rootX = pos[rootOff + 0];
                     const rootY = pos[rootOff + 1];
                     const rootZ = pos[rootOff + 2];
+
+                    // Per-hair geometry — different segment length and
+                    // envelope per strand for a fuzzy silhouette.
+                    const hairLenH = baseHairLen * hairScale[h];
+                    const segLen = hairLenH / SEGMENTS;
+                    const maxRadius = radius + hairLenH * volume;
 
                     // (a) distance constraint: walk outward from root.
                     let prevX = rootX, prevY = rootY, prevZ = rootZ;

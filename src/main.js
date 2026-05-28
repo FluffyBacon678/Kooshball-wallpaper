@@ -86,11 +86,12 @@
         // We compute the visible half-extent at the ball's z-plane from the
         // camera's frustum, then hand both that and the camera distance to
         // the ball so it can clamp its motion to the visible frame.
-        // Elevated camera ~22° above horizontal, target slightly below the
-        // ball's settled position — visually matches the original demo and
-        // hides the natural teardrop of a gravity-loaded hair ball.
-        const CAMERA_ELEVATION_DEG = 22;
-        const CAMERA_LOOK_AT_Y = -1.5;
+        // Elevated camera ~28° above horizontal, target slightly below the
+        // ball's settled position — visually matches the original demo's
+        // angle of view and hides the natural teardrop of a gravity-loaded
+        // hair ball.
+        const CAMERA_ELEVATION_DEG = 28;
+        const CAMERA_LOOK_AT_Y = -2.0;
         let cameraZoom = 1.0;
         function refit() {
             const w = window.innerWidth, h = window.innerHeight;
