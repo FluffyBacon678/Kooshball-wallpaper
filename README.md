@@ -102,32 +102,48 @@ necessary.
 Right-click the wallpaper in Wallpaper Engine and pick **Configure** (or
 just open it while it's applied). Every setting below is exposed:
 
-| Section              | Setting                  | Default | Notes |
-|----------------------|--------------------------|---------|-------|
-| Quality              | Quality preset           | Medium  | Low / Medium / High / Ultra. Picks the strand count ceiling. |
-| Marimo               | Ball size                | 5.0     | Sphere radius in scene units. |
-| Marimo               | Hair amount              | 1.0     | Multiplier on the quality preset's strand count. |
-| Marimo               | Hair length              | 4.0     | Strand length in scene units. |
-| Marimo               | Hair volume              | 0.7     | "Puffiness" — minimum radius per segment. |
-| Motion               | Gravity (ball + hair)    | 0.6     | Pulls the ball *and* the hair tips downward. 0 = float in place. |
-| Motion               | Ball physics             | On      | When on the ball is a rigid body — falls, bounces, can be nudged by mouse. Off pins it at the origin. |
-| Motion               | Ball bounce              | 0.55    | Restitution. 0 = no bounce, 0.9 = very bouncy. |
-| Motion               | Auto-rotation speed      | 0.0     | Constant body spin. Default 0 (no auto-spin, matching the original). |
-| Motion               | Idle motion / wind       | 0.4     | Sinusoidal sway on the strands. |
-| Color                | RGB rainbow mode         | Off     | Overrides color mode; cycles hue with time. |
-| Color                | Color mode               | Natural | Natural / RGB neon / Blue-cyan / Purple-pink / Custom / Follow Windows accent. |
-| Color                | Custom color (root)      | Dark blue | Used when Color mode = Custom. |
-| Color                | Custom color (tip)       | Light cyan | Used when Color mode = Custom. |
-| Look                 | Background color         | Near-black | Sets the clear color and tints the body sphere. |
-| Look                 | Show ground shadow       | On      | Soft vignette under the ball. |
-| Look                 | Camera zoom              | 1.0     | 0.6 = wider, 1.8 = closer. |
-| Look                 | Glow (additive blending) | Off     | Strand additive blending — looks great in dark modes, can wash out light backgrounds. |
-| Interaction          | Mouse interaction        | On      | Mouse position tilts the marimo. |
-| Debug                | Show debug overlay       | Off     | Top-left FPS / hair count chip. |
+| Section     | Setting                     | Default  | Notes |
+|-------------|-----------------------------|----------|-------|
+| Quality     | Quality preset              | High     | Low (3.5k) / Medium (10k) / High (20k) / Ultra (32k) hairs. Picks the strand-count ceiling. |
+| Marimo      | Ball size                   | 5.0      | Sphere radius in scene units. |
+| Marimo      | Hair amount                 | 1.0      | Multiplier on the quality preset's strand count. |
+| Marimo      | Hair length                 | 3.0      | Strand length in scene units. |
+| Marimo      | Hair volume                 | 0.6      | "Puffiness" — minimum radius per segment. Lower = more gravity droop. |
+| Motion      | Gravity (ball + hair)       | 0.6      | Pulls the ball *and* the hair tips downward. 0 = float in place. |
+| Motion      | Auto-rotation speed         | 0.0      | Constant body spin. Default 0 (no auto-spin, matching the original). |
+| Motion      | Hair wind (advanced)        | 0.0      | Ambient sinusoidal sway on the strands while the ball is still. |
+| Motion      | Ball physics (bounce + move)| On       | When on, the ball is a rigid body — falls, bounces, can be grabbed. Off pins it at the origin. |
+| Motion      | Ball bounce (restitution)   | 0.55     | 0 = no bounce, 0.9 = very bouncy. |
+| Color       | RGB rainbow mode            | Off      | Overrides color mode; cycles hue with time. |
+| Color       | Color mode                  | Natural  | Natural / RGB neon / Blue-cyan / Purple-pink / Custom / Follow Windows accent. |
+| Color       | Custom color (root)         | Dark blue| Used when Color mode = Custom. |
+| Color       | Custom color (tip)          | Light cyan| Used when Color mode = Custom. |
+| Look        | Background color            | Near-black| Sets the clear color and tints the body sphere. |
+| Look        | Show ground shadow          | On       | Soft vignette under the ball. |
+| Look        | Camera zoom                 | 1.0      | 0.6 = wider, 1.8 = closer. |
+| Look        | Glow (additive blending)    | Off      | Strand additive blending — great in dark modes, can wash out light backgrounds. |
+| Interaction | Mouse interaction           | On       | Enables grab-and-throw + scroll-to-depth (see **Controls** below). |
+| RGB         | RGB sync                    | Off      | Off / Bottom bar / Ambilight. Edge color bars for hardware sync (see **RGB hardware sync**). |
+| Audio       | Audio reactivity            | 0.0      | 0 = off. Higher = the marimo jumps on bass and twirls on treble. |
+| Debug       | Show debug overlay          | Off      | Top-left FPS / hair / position chip. |
 
-Wallpaper Engine's own FPS setting (the one in the *general* properties
-pane) is respected automatically — `PerformanceLimiter` reads it and caps
-frames accordingly. Default fallback is 60.
+Wallpaper Engine's own FPS setting (the *general* properties pane) is
+respected automatically — `PerformanceLimiter` reads it and caps frames
+accordingly. Default fallback is 60. Wallpaper Engine's **pause** signal
+is also honoured: when WE pauses the wallpaper (a game/video goes
+fullscreen) the simulation and rendering both stop until you return.
+
+## Controls
+
+When **Mouse interaction** is on:
+
+- **Left-click + drag the ball** — grab the marimo and fling it around.
+  Release to throw; it carries your drag velocity, then falls and bounces.
+- **Scroll wheel over the ball** — push it toward (scroll up) or away from
+  (scroll down) the camera, giving explicit control over the 3D depth axis.
+- The ball is bounded by an invisible box (floor, ceiling, four walls)
+  scaled to your screen, so it can never escape the frame.
+- Press **D** anytime to toggle the in-page debug overlay.
 
 ## Debug inside Wallpaper Engine (CEF DevTools)
 
@@ -176,6 +192,22 @@ The wallpaper can act as a **color source** for your peripherals — by syncing
 the marimo's colors to your Windows accent, and letting your RGB hardware
 software sample the screen.
 
+### RGB sync edge bars (built in)
+
+Set **RGB sync** in the configure panel:
+
+- **Off** — no bars, no extra work.
+- **Bottom bar** — a thin 6 px strip along the bottom edge, tinted to the
+  marimo's current hair-tip color. Minimal visual footprint; ideal as a
+  single sample region.
+- **Ambilight** — bars on all four edges. Point a screen-sampler at any
+  edge, or set up perimeter zones for an ambilight effect around your
+  monitor.
+
+The bars update ~30×/second from whatever color mode is active (moss
+green, RGB neon, your Windows accent, a custom gradient, …). Aim your RGB
+software's screen-sample region at an edge and it follows the marimo.
+
 ### Follow Windows accent color (built in)
 
 Set **Color mode** = *Follow Windows accent* in the Wallpaper Engine
@@ -194,14 +226,16 @@ Colors**, the marimo retints to match.
 ### Corsair iCUE sync
 
 Wallpaper Engine itself doesn't drive iCUE devices directly — instead,
-iCUE's own screen-sampling features pull colors from the wallpaper:
+iCUE's own screen-sampling features pull colors from the wallpaper. Turn
+on **RGB sync** (Bottom bar or Ambilight) first so there's a clean,
+saturated region to sample, then:
 
 1. Open **Corsair iCUE**.
 2. Add a new **Mural** (or **Video Lighting** in newer iCUE versions).
-3. Source: **Screen Sample** — point it at your display.
+3. Source: **Screen Sample** — point it at the bottom edge of your display
+   (or the matching edge if you're using an Ambilight bar).
 4. Apply the mural to your iCUE devices (keyboard, mouse, fans, strip).
-5. Optionally tune the sample regions so they pick from where the
-   marimo is on screen.
+5. Optionally tune the sample regions so they pick from the RGB sync bar.
 
 Now: the marimo glows in the Windows accent (or any color mode), and iCUE
 mirrors those colors onto your hardware in real time.
@@ -221,12 +255,28 @@ this wallpaper. In Wallpaper Engine:
 If you want one unified sync covering multiple vendors (iCUE, Razer
 Synapse, NZXT CAM, Logitech G HUB, etc.), the open-source
 [Aurora](https://www.project-aurora.com/) project can sample the screen
-and drive all of them at once.
+and drive all of them at once. Point its screen-capture layer at an RGB
+sync bar.
+
+## Audio reactivity
+
+Set **Audio reactivity** above 0 in the configure panel and the marimo
+responds to whatever audio Wallpaper Engine is playing (system audio):
+
+- **Bass** beats give the ball an upward impulse — it bounces with the
+  kick drum.
+- **Treble** content adds a gentle spin so the body twirls on hi-hats and
+  cymbals.
+
+The strength scales with the slider (0 = off, 2 = very lively). This uses
+Wallpaper Engine's `wallpaperRegisterAudioListener` API, so it only reacts
+inside Wallpaper Engine — in a plain browser the hook is a harmless no-op.
 
 ## Customizing further
 
-- **Strand segments**: edit `SEGMENTS` in `src/FurSystem.js`. 6 is a sweet
-  spot for stability vs. detail. 8 looks softer but doubles CPU work.
+- **Strand segments**: edit `SEGMENTS` in `src/FurSystem.js`. 7 (the
+  current value) matches the original Marimo's `HAIR_DIV-1` and is a sweet
+  spot for smoothness vs. CPU. Higher looks softer but costs more.
 - **Damping**: `_damping` in `FurSystem`. 0.985 is bouncy-but-stable.
   Lower (e.g. 0.97) for a heavier feel.
 - **Per-quality strand counts**: the `QUALITY_HAIRS` map at the top of
