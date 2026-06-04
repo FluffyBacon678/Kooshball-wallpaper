@@ -63,6 +63,14 @@
             // ~0.3 s while still flowing nicely while the ball is in motion.
             this._damping = 0.94;
 
+            // Bending stiffness: how strongly each strand returns to its
+            // radial "grown" direction each frame. This is what makes the ball
+            // ROUND at rest — without it, gravity alone shapes the rest pose
+            // into a teardrop (tips sag and pile at the bottom). The rest
+            // target moves with the ball, so in motion the hair still flows
+            // and lags; only the *resting* shape is pulled back to a sphere.
+            this._stiffness = 0.07;
+
             // Color sampler — replaced via setColorMode.
             this._colorSampler = Marimo.colorModes.getSampler("natural");
             this._colorIsDynamic = false; // set true for rgbNeon
@@ -79,22 +87,54 @@
             // exactly +Y has gravity acting along its own axis and can't bend,
             // so it stands up as a rigid spike. A tiny nudge gives gravity a
             // lever arm and the spike droops into the rest of the fur.
+            // Per-hair tangent (unit vector perpendicular to the root dir,
+            // random azimuth). Strands curl along this tangent toward their
+            // tips so the fur reads as soft swirled fuzz instead of a straight
+            // radial "dandelion" burst — while the random per-hair directions
+            // average out, keeping the overall ball round.
+            this._hairTangent = new Float32Array(MAX_HAIRS * 3);
             {
                 let s = 0x1234567 ^ 0x9E3779B9;
                 const J = 0.03;
+                const rnd = function () {
+                    s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
+                    return s / 0xFFFFFFFF;
+                };
                 for (let h = 0; h < MAX_HAIRS; h++) {
                     const b = h * 3;
-                    s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
-                    const jx = (s / 0xFFFFFFFF - 0.5) * 2 * J;
-                    s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
-                    const jy = (s / 0xFFFFFFFF - 0.5) * 2 * J;
-                    s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
-                    const jz = (s / 0xFFFFFFFF - 0.5) * 2 * J;
+                    const jx = (rnd() - 0.5) * 2 * J;
+                    const jy = (rnd() - 0.5) * 2 * J;
+                    const jz = (rnd() - 0.5) * 2 * J;
                     let x = this._rootDir[b] + jx, y = this._rootDir[b + 1] + jy, z = this._rootDir[b + 2] + jz;
-                    const inv = 1 / (Math.hypot(x, y, z) || 1);
-                    this._rootDir[b] = x * inv; this._rootDir[b + 1] = y * inv; this._rootDir[b + 2] = z * inv;
+                    let inv = 1 / (Math.hypot(x, y, z) || 1);
+                    x *= inv; y *= inv; z *= inv;
+                    this._rootDir[b] = x; this._rootDir[b + 1] = y; this._rootDir[b + 2] = z;
+
+                    // Two orthonormal vectors perpendicular to the root dir.
+                    // Pick a helper axis not parallel to the normal.
+                    let ax = 0, ay = 1, az = 0;
+                    if (Math.abs(y) > 0.9) { ax = 1; ay = 0; az = 0; }
+                    // t1 = normalize(cross(n, helper))
+                    let t1x = y * az - z * ay;
+                    let t1y = z * ax - x * az;
+                    let t1z = x * ay - y * ax;
+                    inv = 1 / (Math.hypot(t1x, t1y, t1z) || 1);
+                    t1x *= inv; t1y *= inv; t1z *= inv;
+                    // t2 = cross(n, t1)
+                    const t2x = y * t1z - z * t1y;
+                    const t2y = z * t1x - x * t1z;
+                    const t2z = x * t1y - y * t1x;
+                    // Random azimuth around the normal.
+                    const az2 = rnd() * Math.PI * 2;
+                    const ca = Math.cos(az2), sa = Math.sin(az2);
+                    this._hairTangent[b]     = t1x * ca + t2x * sa;
+                    this._hairTangent[b + 1] = t1y * ca + t2y * sa;
+                    this._hairTangent[b + 2] = t1z * ca + t2z * sa;
                 }
             }
+            // How far the tip curls along its tangent, as a fraction of hair
+            // length. 0 = straight radial spikes, higher = softer swirled fuzz.
+            this._curl = 0.55;
             this._pos = new Float32Array(MAX_HAIRS * POINTS_PER_HAIR * 3);
             this._ppos = new Float32Array(MAX_HAIRS * POINTS_PER_HAIR * 3);
 
@@ -310,11 +350,17 @@
             // Hair-tip gravity. Scale matches the original Marimo's per-frame
             // ~0.05 acceleration when the user's slider is ~1.0, so dialing
             // gravity up produces *visible* droop quickly.
-            const gAcc = -this._gravity * 0.045 * dt60 * dt60;
+            const gAcc = -this._gravity * 0.04 * dt60 * dt60;
             const windAmp = this._windStrength * 0.04 * dt60 * dt60;
+            // Per-frame stiffness factor (framerate-independent).
+            const stiff = 1 - Math.pow(1 - this._stiffness, dt60);
             // Per-hair max radius is derived inside the constraint loop using
             // the per-hair length scale, so each strand has its own envelope.
             const volume = this._hairVolume;
+            const baseHairLen2 = this._hairLength;
+            const hairScale2 = this._hairLengthScale;
+            const hairTangent = this._hairTangent;
+            const curl = this._curl;
 
             const rot = this._ball.getRotationMatrix().elements;
             // Apply rotation to a vector (x,y,z) -> world. THREE matrices are column-major
@@ -343,6 +389,12 @@
                 const rny = rot[1] * nx0 + rot[5] * ny0 + rot[9] * nz0;
                 const rnz = rot[2] * nx0 + rot[6] * ny0 + rot[10] * nz0;
 
+                // Rotated per-hair tangent (for curl).
+                const tx0 = hairTangent[rb], ty0 = hairTangent[rb + 1], tz0 = hairTangent[rb + 2];
+                const rtx = rot[0] * tx0 + rot[4] * ty0 + rot[8] * tz0;
+                const rty = rot[1] * tx0 + rot[5] * ty0 + rot[9] * tz0;
+                const rtz = rot[2] * tx0 + rot[6] * ty0 + rot[10] * tz0;
+
                 // Wind sampled once per strand using root direction & time.
                 const w = Marimo.windAt(nx0, ny0, nz0, time);
 
@@ -355,7 +407,11 @@
                 ppos[rootOff + 1] = pos[rootOff + 1];
                 ppos[rootOff + 2] = pos[rootOff + 2];
 
-                // Verlet integrate points 1..SEGMENTS.
+                // Per-hair segment length for the radial rest target.
+                const segLenH = (baseHairLen2 * hairScale2[h]) / SEGMENTS;
+
+                // Verlet integrate points 1..SEGMENTS, then pull toward the
+                // radial rest position (bending stiffness → round at rest).
                 for (let i = 1; i <= SEGMENTS; i++) {
                     const off = rootOff + i * 3;
                     const px = pos[off + 0];
@@ -367,9 +423,24 @@
                     ppos[off + 0] = px;
                     ppos[off + 1] = py;
                     ppos[off + 2] = pz;
-                    pos[off + 0] = px + vx;
-                    pos[off + 1] = py + vy;
-                    pos[off + 2] = pz + vz;
+                    let npx = px + vx;
+                    let npy = py + vy;
+                    let npz = pz + vz;
+                    // Radial rest target (moves with the ball's centre + spin),
+                    // plus a tangential curl that grows toward the tip so the
+                    // strand sweeps sideways instead of standing straight out.
+                    const tNorm = i / SEGMENTS;
+                    const restR = radius + segLenH * i;
+                    const curlMag = curl * tNorm * tNorm * segLenH * SEGMENTS;
+                    const restX = bx + rnx * restR + rtx * curlMag;
+                    const restY = by + rny * restR + rty * curlMag;
+                    const restZ = bz + rnz * restR + rtz * curlMag;
+                    npx += (restX - npx) * stiff;
+                    npy += (restY - npy) * stiff;
+                    npz += (restZ - npz) * stiff;
+                    pos[off + 0] = npx;
+                    pos[off + 1] = npy;
+                    pos[off + 2] = npz;
                 }
             }
 
