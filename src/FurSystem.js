@@ -31,10 +31,10 @@
 
     // Maximum strand counts per quality preset.
     const QUALITY_HAIRS = {
-        low: 3500,
-        medium: 10000,
-        high: 20000,
-        ultra: 32000
+        low: 5000,
+        medium: 14000,
+        high: 28000,
+        ultra: 45000
     };
 
     // We pre-allocate buffers for the largest preset so changing quality at
@@ -134,7 +134,7 @@
             }
             // How far the tip curls along its tangent, as a fraction of hair
             // length. 0 = straight radial spikes, higher = softer swirled fuzz.
-            this._curl = 0.55;
+            this._curl = 0.72;
             this._pos = new Float32Array(MAX_HAIRS * POINTS_PER_HAIR * 3);
             this._ppos = new Float32Array(MAX_HAIRS * POINTS_PER_HAIR * 3);
 
@@ -444,11 +444,16 @@
                 }
             }
 
-            // -------- 2) constraint relaxation (3 passes) --------
+            // -------- 2) constraint relaxation (2 passes) --------
             //  (a) distance constraint per segment
             //  (b) volume constraint per point (min radius from ball center)
             //  (c) max-length clamp per point (from root)
-            const ITERATIONS = 3;
+            // 2 passes (down from 3): the per-frame bending stiffness now
+            // pulls strands toward their rest shape every step, so the
+            // constraints need fewer relaxation passes to stay stable. Saves
+            // ~1/3 of the per-frame constraint cost, which matters at the
+            // higher hair densities.
+            const ITERATIONS = 2;
             for (let it = 0; it < ITERATIONS; it++) {
                 for (let h = 0; h < N; h++) {
                     const rootOff = h * POINTS_PER_HAIR * 3;

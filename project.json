@@ -15,10 +15,10 @@
                 "type": "combo",
                 "value": "high",
                 "options": [
-                    { "label": "Low (3.5k hairs)", "value": "low" },
-                    { "label": "Medium (10k hairs)", "value": "medium" },
-                    { "label": "High (20k hairs)", "value": "high" },
-                    { "label": "Ultra (32k hairs)", "value": "ultra" }
+                    { "label": "Low (5k hairs)", "value": "low" },
+                    { "label": "Medium (14k hairs)", "value": "medium" },
+                    { "label": "High (28k hairs)", "value": "high" },
+                    { "label": "Ultra (45k hairs)", "value": "ultra" }
                 ]
             },
 
