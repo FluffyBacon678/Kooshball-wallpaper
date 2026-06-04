@@ -39,6 +39,20 @@
             customB: null
         };
 
+        // Changing a custom color picker should auto-switch Color mode to
+        // "custom" so the picker visibly does something (otherwise it has no
+        // effect unless the mode is already custom — the source of the
+        // "custom palette does nothing" confusion).
+        //
+        // We must NOT do this during the initial property load, or a saved
+        // non-custom colorMode would be overridden. Reliable signal: Wallpaper
+        // Engine includes EVERY property (incl. colorMode) in the first burst,
+        // but sends only the *changed* property afterwards. So we auto-switch
+        // only when a custom color arrives (a) after the first batch and
+        // (b) in a batch that does not also carry colorMode (i.e. the user
+        // dragged the picker, they didn't touch the mode dropdown).
+        let firstBatchDone = false;
+
         function reapplyColors() {
             const effectiveMode = colorState.rgbMode ? "rgbNeon" : colorState.mode;
             fur.setColorMode(effectiveMode, colorState.customA, colorState.customB);
@@ -62,6 +76,11 @@
 
         function applyUser(props) {
             if (!props) return;
+
+            // Did this batch include an explicit color-mode choice? If so the
+            // user (or initial load) is driving the mode; a custom color in the
+            // same batch must not override it.
+            const batchHasColorMode = (props.colorMode !== undefined);
 
             if (props.quality) {
                 fur.setQuality(String(value(props.quality)).toLowerCase());
@@ -114,12 +133,17 @@
                 colorState.mode = String(value(props.colorMode));
                 reapplyColors();
             }
+            // A live drag of a custom color picker (after load, in a batch
+            // without an explicit colorMode) implies the user wants custom.
+            const autoCustom = firstBatchDone && !batchHasColorMode && !colorState.rgbMode;
             if (props.customColor1) {
                 colorState.customA = Marimo.colorModes.parseColor(value(props.customColor1), null);
+                if (autoCustom) colorState.mode = "custom";
                 reapplyColors();
             }
             if (props.customColor2) {
                 colorState.customB = Marimo.colorModes.parseColor(value(props.customColor2), null);
+                if (autoCustom) colorState.mode = "custom";
                 reapplyColors();
             }
             if (props.backgroundColor) {
@@ -134,6 +158,9 @@
             }
             if (props.mouseInteraction !== undefined) {
                 setMouseEnabled(Boolean(value(props.mouseInteraction)));
+            }
+            if (props.mouseFollow !== undefined) {
+                if (ctx.setMouseFollow) ctx.setMouseFollow(Boolean(value(props.mouseFollow)));
             }
             if (props.cameraDistance) {
                 if (ctx.setCameraZoom) ctx.setCameraZoom(Number(value(props.cameraDistance)));
@@ -154,6 +181,11 @@
             if (props.audioReactivity !== undefined) {
                 if (ctx.setAudioReactivity) ctx.setAudioReactivity(Number(value(props.audioReactivity)));
             }
+
+            // After the first batch (the initial full property load), later
+            // batches are treated as live user edits for the custom-color
+            // auto-switch logic above.
+            firstBatchDone = true;
         }
 
         function applyGeneral(props) {

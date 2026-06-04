@@ -6,7 +6,7 @@
     "preview": "preview.jpg",
     "tags": ["Abstract", "Relaxing"],
     "visibility": "public",
-    "version": 7,
+    "version": 8,
     "general": {
         "properties": {
             "quality": {
@@ -165,9 +165,15 @@
 
             "mouseInteraction": {
                 "order": 50,
-                "text": "Mouse interaction",
+                "text": "Mouse interaction (grab + throw)",
                 "type": "bool",
                 "value": true
+            },
+            "mouseFollow": {
+                "order": 51,
+                "text": "Mouse breeze (nudge ball without grabbing)",
+                "type": "bool",
+                "value": false
             },
 
             "rgbSync": {

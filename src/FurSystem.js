@@ -55,7 +55,13 @@
             this._hairVolume = opts.hairVolume != null ? opts.hairVolume : 0.7;  // 0..1
             this._gravity = opts.gravity != null ? opts.gravity : 0.6;
             this._windStrength = opts.windStrength != null ? opts.windStrength : 0.4;
-            this._damping = 0.985;
+            // Per-60fps-frame velocity retention for hair points. Lower =
+            // hair sheds motion faster and "relaxes" sooner after the ball
+            // stops. (There is no strand-to-strand interaction in this model;
+            // the lingering jiggle users notice is just under-damped verlet
+            // velocity, so this is the lever that fixes it.) 0.94 settles in
+            // ~0.3 s while still flowing nicely while the ball is in motion.
+            this._damping = 0.94;
 
             // Color sampler — replaced via setColorMode.
             this._colorSampler = Marimo.colorModes.getSampler("natural");

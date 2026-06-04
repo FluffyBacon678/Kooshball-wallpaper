@@ -70,7 +70,7 @@
         let dist = frameRadius / Math.tan(vFov / 2);
         const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
         const distH = frameRadius / Math.tan(hFov / 2);
-        dist = Math.max(dist, distH) * 1.18 * zoom;
+        dist = Math.max(dist, distH) * 1.25 * zoom;
         const rad = elevationDeg * Math.PI / 180;
         camera.position.set(0, dist * Math.sin(rad), dist * Math.cos(rad));
         camera.lookAt(0, lookAtY, 0);

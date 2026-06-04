@@ -49,7 +49,12 @@
             this.floorY = -7;
             this.ceilingY = 7;
             this.wallX = 9;
-            this.wallZ = 3.5;
+            // Asymmetric depth bounds. +Z is toward the camera (ball grows on
+            // screen → must stay tiny to guarantee it fits). -Z is away from
+            // the camera (ball shrinks → free to recede far, which is the "let
+            // it fall far back" behaviour). Set properly in setBounds().
+            this.wallZNear = 1;    // toward camera (+Z) — very tight
+            this.wallZFar  = 18;   // away from camera (-Z) — generous
 
             // Optional constant spin — off by default. Slider in Wallpaper
             // Engine ("Rotation speed") drives this for users who want
@@ -118,12 +123,12 @@
             // Leave headroom equal to the ball radius so the silhouette stays
             // inside the frame even when the ball is at maximum displacement.
             this.wallX = Math.max(this.baseRadius + 1, visibleHalfWidth - this.baseRadius);
-            // Z bounds — significantly wider than before so the ball has
-            // room to travel back into the depth axis. wallZ scales with
-            // the visible width so wide / ultrawide monitors get more 3D
-            // play room. Capped so the ball never gets close enough to the
-            // camera to fill the screen with body alone.
-            this.wallZ = Math.max(this.baseRadius * 1.0, visibleHalfWidth * 0.85);
+            // Toward-camera (+Z): keep it tiny so the ball never grows big
+            // enough to overflow the frame. Away-from-camera (-Z): generous,
+            // so the ball can recede far into the scene (it only shrinks, so
+            // it can't go off-screen). Scales with visible width on ultrawide.
+            this.wallZNear = this.baseRadius * 0.2;
+            this.wallZFar  = Math.max(this.baseRadius * 3, visibleHalfWidth * 1.4);
             const vHalf = Math.max(this.baseRadius + 1, visibleHalfHeight - this.baseRadius);
             this.floorY = -vHalf;
             this.ceilingY =  vHalf;
@@ -228,14 +233,13 @@
                     if (this.velocity.x < 0) this.velocity.x *= -this.restitution;
                 }
 
-                // Front/back walls (Z) — narrow so the ball stays near the
-                // camera focal plane.
-                const wzR = this.wallZ;
-                if (this.position.z > wzR) {
-                    this.position.z = wzR;
+                // Depth walls (Z), asymmetric: tight toward the camera (+Z),
+                // generous away from it (-Z).
+                if (this.position.z > this.wallZNear) {
+                    this.position.z = this.wallZNear;
                     if (this.velocity.z > 0) this.velocity.z *= -this.restitution;
-                } else if (this.position.z < -wzR) {
-                    this.position.z = -wzR;
+                } else if (this.position.z < -this.wallZFar) {
+                    this.position.z = -this.wallZFar;
                     if (this.velocity.z < 0) this.velocity.z *= -this.restitution;
                 }
             }

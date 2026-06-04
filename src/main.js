@@ -155,9 +155,13 @@
         //     clicks are enabled for this wallpaper in WE.
         let mouseEnabled = true;
         const mouseWorld = new THREE.Vector3(0, 0, 0);
+        const mouseWorldPrev = new THREE.Vector3(0, 0, 0);
         let mouseHasSample = false;
         let mouseGrabbed = false;
         let mouseIsDown = false;
+        // "Mouse breeze": gently nudge the ball with mouse movement even when
+        // the cursor isn't over (grabbing) the ball. Toggled by a user prop.
+        let mouseFollow = false;
 
         function setMouseEnabled(v) {
             mouseEnabled = !!v;
@@ -167,6 +171,7 @@
             }
             if (!mouseEnabled) mouseIsDown = false;
         }
+        function setMouseFollow(v) { mouseFollow = !!v; }
 
         // Project the screen-space mouse to the z=0 plane in world space.
         const _ndc = new THREE.Vector3();
@@ -337,6 +342,7 @@
             camera: camera,
             refit: refit,
             setMouseEnabled: setMouseEnabled,
+            setMouseFollow: setMouseFollow,
             setDebugVisible: setDebugVisible,
             setGroundVisible: setGroundVisible,
             setCameraZoom: setCameraZoom,
@@ -397,25 +403,101 @@
                     // Random Z impulse on hard throws — without it the ball
                     // stays in the camera plane forever.
                     ball.velocity.z += (Math.random() - 0.5) * throwSpeed * 0.35;
-                    return;
+                } else {
+                    // Kinematically drag the ball in X-Y. We deliberately leave
+                    // Z alone: any depth velocity the ball was carrying is
+                    // preserved through the grab, so a quick grab-release on a
+                    // ball that was already moving in Z keeps that motion.
+                    const prevX = ball.position.x;
+                    const prevY = ball.position.y;
+                    const lerp = Math.min(1, dt * 18);
+                    ball.position.x += (mouseWorld.x - ball.position.x) * lerp;
+                    ball.position.y += (mouseWorld.y - ball.position.y) * lerp;
+                    const invDt = 1 / Math.max(0.001, dt);
+                    ball.velocity.x = (ball.position.x - prevX) * invDt;
+                    ball.velocity.y = (ball.position.y - prevY) * invDt;
+                    // velocity.z untouched — physics carries it
                 }
-                // Kinematically drag the ball in X-Y. We deliberately leave
-                // Z alone: any depth velocity the ball was carrying is
-                // preserved through the grab, so a quick grab-release on a
-                // ball that was already moving in Z keeps that motion.
-                const prevX = ball.position.x;
-                const prevY = ball.position.y;
-                const lerp = Math.min(1, dt * 18);
-                ball.position.x += (mouseWorld.x - ball.position.x) * lerp;
-                ball.position.y += (mouseWorld.y - ball.position.y) * lerp;
-                const invDt = 1 / Math.max(0.001, dt);
-                ball.velocity.x = (ball.position.x - prevX) * invDt;
-                ball.velocity.y = (ball.position.y - prevY) * invDt;
-                // velocity.z untouched — physics carries it
             } else if (mouseIsDown && dist < grabRadius) {
                 mouseGrabbed = true;
                 ball.grabbed = true;
+            } else if (mouseFollow) {
+                // Mouse breeze: convert this frame's cursor movement into a
+                // light impulse on the ball, even though it isn't grabbed.
+                // Clamped so a fast flick across the screen can't launch it.
+                const mvx = THREE.MathUtils.clamp(mouseWorld.x - mouseWorldPrev.x, -4, 4);
+                const mvy = THREE.MathUtils.clamp(mouseWorld.y - mouseWorldPrev.y, -4, 4);
+                ball.applyImpulse(mvx * 0.22, mvy * 0.22, 0, 0.008);
             }
+
+            // Track cursor world position for the next frame's breeze delta.
+            mouseWorldPrev.copy(mouseWorld);
+        }
+
+        // ---- Keep the ball inside the visible frame (hard guarantee). ----
+        // The world-space walls give a nice bounce, but with a perspective
+        // camera + hair extending past the body radius they aren't an exact
+        // screen boundary. This projects the ball to screen space (NDC) and,
+        // using a hair-aware margin, pulls it back so its fuzzy silhouette can
+        // never leave the screen — regardless of grab, throw, scroll-depth or
+        // audio. Runs every frame after the ball has moved.
+        const _clProj = new THREE.Vector3();
+        const _clTmp  = new THREE.Vector3();
+        const _clTgt  = new THREE.Vector3();
+        // The 6 extreme surface offsets of the fuzzy ball (along world axes).
+        // Projecting all 6 captures the true perspective silhouette — the
+        // toward-camera point projects largest — so the box is exact, not an
+        // approximation.
+        const _clAxes = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
+        function clampBallToViewport() {
+            const visR = ball.baseRadius + fur._hairLength * 1.15;
+            _clProj.copy(ball.position).project(camera);
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+            for (let k = 0; k < 6; k++) {
+                const a = _clAxes[k];
+                _clTmp.set(
+                    ball.position.x + a[0] * visR,
+                    ball.position.y + a[1] * visR,
+                    ball.position.z + a[2] * visR
+                ).project(camera);
+                if (_clTmp.x < minX) minX = _clTmp.x;
+                if (_clTmp.x > maxX) maxX = _clTmp.x;
+                if (_clTmp.y < minY) minY = _clTmp.y;
+                if (_clTmp.y > maxY) maxY = _clTmp.y;
+            }
+            // Asymmetric extents from center to each silhouette edge (NDC),
+            // with a tiny safety pad. Clamp the center so every edge stays
+            // inside [-1, 1].
+            const S = 1.06;
+            let leftE  = (_clProj.x - minX) * S;
+            let rightE = (maxX - _clProj.x) * S;
+            let downE  = (_clProj.y - minY) * S;
+            let upE    = (maxY - _clProj.y) * S;
+            // If the ball is too big to fit on an axis, center it there.
+            if (leftE + rightE >= 2) { leftE = rightE = 0.999; }
+            if (downE + upE     >= 2) { downE = upE     = 0.999; }
+            let nx = _clProj.x, ny = _clProj.y, hitX = 0, hitY = 0;
+            if (nx - leftE < -1)      { nx = -1 + leftE;  hitX = -1; }
+            else if (nx + rightE > 1) { nx =  1 - rightE; hitX =  1; }
+            if (ny - downE < -1)      { ny = -1 + downE;  hitY = -1; }
+            else if (ny + upE > 1)    { ny =  1 - upE;    hitY =  1; }
+            if (!hitX && !hitY) return;
+            _clTgt.set(nx, ny, _clProj.z).unproject(camera);
+            if (hitX) {
+                ball.position.x = _clTgt.x;
+                if ((hitX < 0 && ball.velocity.x < 0) || (hitX > 0 && ball.velocity.x > 0)) {
+                    ball.velocity.x *= -ball.restitution;
+                }
+            }
+            if (hitY) {
+                ball.position.y = _clTgt.y;
+                if ((hitY < 0 && ball.velocity.y < 0) || (hitY > 0 && ball.velocity.y > 0)) {
+                    ball.velocity.y *= -ball.restitution;
+                }
+            }
+            // Re-sync the body mesh to the corrected position (ball.update
+            // already copied the pre-clamp position into the mesh).
+            ball.mesh.position.copy(ball.position);
         }
 
         function frame(now) {
@@ -431,6 +513,7 @@
             applyMouseToBall(dt);
             applyAudioToBall();
             ball.update(dt, elapsed);
+            clampBallToViewport();   // hard on-screen guarantee, before hair reads position
             fur.update(dt, elapsed);
             renderer.render(scene, camera);
             updateRgbSyncBars(dt);
