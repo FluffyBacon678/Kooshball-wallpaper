@@ -73,6 +73,28 @@
 
             // --- TypedArray simulation state ---
             this._rootDir = Marimo.fibonacciSphere(MAX_HAIRS); // Float32Array length MAX_HAIRS*3
+            // Jitter each root direction slightly (then renormalize). Mirrors
+            // the original Marimo's per-vertex perturbation. Critically, it
+            // breaks the perfectly-axial strands at the poles: a hair pointing
+            // exactly +Y has gravity acting along its own axis and can't bend,
+            // so it stands up as a rigid spike. A tiny nudge gives gravity a
+            // lever arm and the spike droops into the rest of the fur.
+            {
+                let s = 0x1234567 ^ 0x9E3779B9;
+                const J = 0.03;
+                for (let h = 0; h < MAX_HAIRS; h++) {
+                    const b = h * 3;
+                    s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
+                    const jx = (s / 0xFFFFFFFF - 0.5) * 2 * J;
+                    s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
+                    const jy = (s / 0xFFFFFFFF - 0.5) * 2 * J;
+                    s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
+                    const jz = (s / 0xFFFFFFFF - 0.5) * 2 * J;
+                    let x = this._rootDir[b] + jx, y = this._rootDir[b + 1] + jy, z = this._rootDir[b + 2] + jz;
+                    const inv = 1 / (Math.hypot(x, y, z) || 1);
+                    this._rootDir[b] = x * inv; this._rootDir[b + 1] = y * inv; this._rootDir[b + 2] = z * inv;
+                }
+            }
             this._pos = new Float32Array(MAX_HAIRS * POINTS_PER_HAIR * 3);
             this._ppos = new Float32Array(MAX_HAIRS * POINTS_PER_HAIR * 3);
 

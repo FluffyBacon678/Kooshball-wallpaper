@@ -123,6 +123,7 @@ just open it while it's applied). Every setting below is exposed:
 | Look        | Camera zoom                 | 1.0      | 0.6 = wider, 1.8 = closer. |
 | Look        | Glow (additive blending)    | Off      | Strand additive blending — great in dark modes, can wash out light backgrounds. |
 | Interaction | Mouse interaction           | On       | Enables grab-and-throw + scroll-to-depth (see **Controls** below). |
+| Interaction | Mouse breeze                | Off      | Lightly nudges the ball as you move the mouse, even without grabbing it. |
 | RGB         | RGB sync                    | Off      | Off / Bottom bar / Ambilight. Edge color bars for hardware sync (see **RGB hardware sync**). |
 | Audio       | Audio reactivity            | 0.0      | 0 = off. Higher = the marimo jumps on bass and twirls on treble. |
 | Debug       | Show debug overlay          | Off      | Top-left FPS / hair / position chip. |
