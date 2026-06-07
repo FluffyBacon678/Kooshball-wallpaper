@@ -105,6 +105,7 @@ just open it while it's applied). Every setting below is exposed:
 | Section     | Setting                     | Default  | Notes |
 |-------------|-----------------------------|----------|-------|
 | Quality     | Quality preset              | High     | Low (5k) / Medium (14k) / High (28k) / Ultra (45k) hairs. Picks the strand-count ceiling. |
+| Quality     | Adaptive quality            | On       | Auto-trims hair count to hold the target FPS on any hardware, and restores it when there's headroom. See **Performance**. |
 | Marimo      | Ball size                   | 5.0      | Sphere radius in scene units. |
 | Marimo      | Hair amount                 | 1.0      | Multiplier on the quality preset's strand count. |
 | Marimo      | Hair length                 | 3.0      | Strand length in scene units. |
@@ -125,7 +126,8 @@ just open it while it's applied). Every setting below is exposed:
 | Look        | Background color            | Near-black| Sets the clear color and tints the body sphere. |
 | Look        | Show ground shadow          | On       | Soft vignette under the ball. |
 | Look        | Camera distance             | 1.0      | 0.6 = camera closer (ball bigger), 1.8 = farther (ball smaller). |
-| Look        | Glow (additive blending)    | Off      | Strand additive blending — great in dark modes, can wash out light backgrounds. |
+| Look        | Bloom / glow                | Off      | Real bloom post-process — bright areas glow with a soft halo. Best with RGB/neon/fire on a dark background. |
+| Look        | Bloom strength              | 0.8      | How intense the glow is (only when Bloom is on). |
 | Interaction | Mouse interaction           | On       | Enables grab-and-throw + scroll-to-depth (see **Controls** below). |
 | Interaction | Mouse breeze                | Off      | Lightly nudges the ball as you move the mouse, even without grabbing it. |
 | RGB         | RGB sync                    | Off      | Off / Bottom bar / Ambilight. Edge color bars for hardware sync (see **RGB hardware sync**). |
@@ -172,19 +174,31 @@ in-page debug overlay (useful for both browser and CEF).
 
 | Preset | Strands  | Approx. CPU / frame * | Approx. GPU                |
 |--------|----------|-----------------------|----------------------------|
-| Low    | 3,500    | ~0.5 ms               | Trivial on any GPU         |
-| Medium | 10,000   | ~1.5 ms               | Light, fine on integrated  |
-| High   | 20,000   | ~3 ms                 | Mid-range discrete GPU     |
-| Ultra  | 32,000   | ~5 ms                 | Recommended discrete GPU   |
+| Low    | 5,000    | ~1 ms                 | Trivial on any GPU         |
+| Medium | 14,000   | ~2 ms                 | Light, fine on integrated  |
+| High   | 28,000   | ~4 ms                 | Mid-range discrete GPU     |
+| Ultra  | 45,000   | ~7 ms                 | Recommended discrete GPU   |
 
 \* Measured on a mid-2024 desktop CPU. Your numbers will vary.
+
+**Adaptive quality (on by default)** makes the preset a *ceiling*, not a
+fixed cost: the wallpaper measures real per-frame work and automatically
+trims the live hair count if it can't hold your target FPS, then restores
+it when there's headroom. So you can leave it on High/Ultra and it stays
+smooth even on a weak GPU or a 144 Hz target — turn it off if you'd rather
+guarantee maximum density over framerate. The debug overlay shows the live
+work-ms, budget and adapt %.
 
 Notes:
 
 - The simulation runs on the CPU. The GPU only draws `LineSegments`, which
-  is essentially free.
-- Strand count = `(quality preset max) × hairAmount slider`. Pull the
-  `hairAmount` slider down if you want a lighter version of any preset.
+  is essentially free (bloom adds a few cheap half-res passes when on).
+- Strand count = `(quality preset max) × hairAmount slider × adaptive`.
+  Pull the `hairAmount` slider down if you want a lighter version of any
+  preset, or just trust adaptive quality.
+- **Bloom** is off by default and costs nothing when off (its render
+  targets aren't even allocated until you enable it). When on it adds one
+  extra scene capture + a few half-resolution blur passes.
 - WebGL line width is fixed at 1 pixel on most platforms (a Three.js
   limitation, not a bug here). Strand visual density is controlled by
   count, not thickness.

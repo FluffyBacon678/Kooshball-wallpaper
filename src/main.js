@@ -34,6 +34,8 @@
         const renderer = sceneCtx.renderer;
 
         const limiter = new Marimo.PerformanceLimiter();
+        const bloom = new Marimo.Bloom(renderer);
+        let bloomEnabled = false;
         const ball = new Marimo.MarimoBall(scene, { radius: 5 });
         const fur = new Marimo.FurSystem(scene, ball, {
             quality: "medium",
@@ -131,7 +133,11 @@
             const w = window.innerWidth, h = window.innerHeight;
             renderer.setSize(w, h, false);
             // Re-cap pixel ratio (multi-monitor moves can change DPR).
-            renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+            const dpr = Math.min(window.devicePixelRatio || 1, 2);
+            renderer.setPixelRatio(dpr);
+            // Bloom render targets work in device pixels — only (re)allocated
+            // while bloom is actually enabled (no idle GPU memory when off).
+            if (bloomEnabled) bloom.setSize(Math.floor(w * dpr), Math.floor(h * dpr));
             refit();
         }
         window.addEventListener("resize", onResize);
@@ -376,6 +382,15 @@
             setColorCycleSpeed: function (v) { fur.setColorCycleSpeed(v); },
             setBrightness: function (v) { fur.setBrightness(v); },
             setAdaptiveQuality: setAdaptiveQuality,
+            setBloom: function (v) {
+                bloomEnabled = !!v;
+                // Allocate the bloom targets the moment it's switched on.
+                if (bloomEnabled) {
+                    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+                    bloom.setSize(Math.floor(window.innerWidth * dpr), Math.floor(window.innerHeight * dpr));
+                }
+            },
+            setBloomStrength: function (v) { bloom.setStrength(v); },
             setPaused: setPaused
         });
 
@@ -570,7 +585,8 @@
             ball.update(dt, elapsed);
             clampBallToViewport();   // hard on-screen guarantee, before hair reads position
             fur.update(dt, elapsed);
-            renderer.render(scene, camera);
+            if (bloomEnabled) bloom.render(scene, camera);
+            else renderer.render(scene, camera);
             // EMA of the per-frame work time (CPU sim + render submit).
             workEMA += ((performance.now() - workStart) - workEMA) * 0.1;
             updateAdaptive(dt);
@@ -601,8 +617,9 @@
         // Expose for console inspection.
         Marimo.app = {
             scene: scene, camera: camera, renderer: renderer,
-            ball: ball, fur: fur, limiter: limiter,
-            refit: refit
+            ball: ball, fur: fur, limiter: limiter, bloom: bloom,
+            refit: refit,
+            isBloomEnabled: function () { return bloomEnabled; }
         };
     }
 

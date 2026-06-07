@@ -249,14 +249,6 @@
         setAudioPuff(v) { this._audioPuff = Math.max(0, v); }
         /** True when colours must be regenerated every frame. */
         _colorNeedsPerFrame() { return this._colorIsDynamic || this._colorCycleSpeed > 0; }
-        setBloomLike(enabled) {
-            // Cheap "glow" approximation without a real bloom pass: switch the
-            // material to additive blending so overlapping strands brighten.
-            this._material.blending = enabled ? THREE.AdditiveBlending : THREE.NormalBlending;
-            this._material.transparent = enabled;
-            this._material.needsUpdate = true;
-        }
-
         getActiveHairCount() { return this._activeHairs; }
         getSegments() { return SEGMENTS; }
         // Adaptive performance scale [0.2..1] applied on top of the user's

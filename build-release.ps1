@@ -6,8 +6,11 @@
 
 $ErrorActionPreference = "Stop"
 
+# Single canonical upload folder: a sibling of the repo, so it never sits
+# inside the project (nothing to accidentally commit) and there's exactly
+# one place to drag into Wallpaper Engine.
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$dst  = Join-Path $root "release"
+$dst  = Join-Path (Split-Path -Parent $root) "marimo-wallpaper-release"
 
 if (Test-Path $dst) { Remove-Item -Recurse -Force $dst }
 New-Item -ItemType Directory -Path $dst | Out-Null
@@ -25,6 +28,7 @@ $include = @(
     "src\WallpaperEngineProperties.js",
     "src\PerformanceLimiter.js",
     "src\scene\setupScene.js",
+    "src\scene\bloom.js",
     "src\util\fibonacci.js",
     "src\util\noise.js",
     "src\util\colorModes.js"

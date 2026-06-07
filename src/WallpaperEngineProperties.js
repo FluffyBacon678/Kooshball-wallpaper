@@ -183,7 +183,10 @@
                 if (ctx.setCameraZoom) ctx.setCameraZoom(Number(value(props.cameraDistance)));
             }
             if (props.bloom !== undefined) {
-                fur.setBloomLike(Boolean(value(props.bloom)));
+                if (ctx.setBloom) ctx.setBloom(Boolean(value(props.bloom)));
+            }
+            if (props.bloomStrength !== undefined) {
+                if (ctx.setBloomStrength) ctx.setBloomStrength(Number(value(props.bloomStrength)));
             }
             if (props.debugOverlay !== undefined) {
                 setDebugVisible(Boolean(value(props.debugOverlay)));
