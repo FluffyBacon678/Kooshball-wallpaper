@@ -162,6 +162,14 @@
             if (props.mouseFollow !== undefined) {
                 if (ctx.setMouseFollow) ctx.setMouseFollow(Boolean(value(props.mouseFollow)));
             }
+            // DVD speed must be set before DVD mode so the seeded velocity
+            // uses the right magnitude.
+            if (props.dvdSpeed !== undefined) {
+                if (ctx.setDvdSpeed) ctx.setDvdSpeed(Number(value(props.dvdSpeed)));
+            }
+            if (props.dvdMode !== undefined) {
+                if (ctx.setDvdMode) ctx.setDvdMode(Boolean(value(props.dvdMode)));
+            }
             if (props.cameraDistance) {
                 if (ctx.setCameraZoom) ctx.setCameraZoom(Number(value(props.cameraDistance)));
             }

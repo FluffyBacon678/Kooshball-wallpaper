@@ -343,6 +343,8 @@
             refit: refit,
             setMouseEnabled: setMouseEnabled,
             setMouseFollow: setMouseFollow,
+            setDvdMode: function (v) { ball.setDvdMode(v); },
+            setDvdSpeed: function (v) { ball.setDvdSpeed(v); },
             setDebugVisible: setDebugVisible,
             setGroundVisible: setGroundVisible,
             setCameraZoom: setCameraZoom,
@@ -482,17 +484,20 @@
             if (ny - downE < -1)      { ny = -1 + downE;  hitY = -1; }
             else if (ny + upE > 1)    { ny =  1 - upE;    hitY =  1; }
             if (!hitX && !hitY) return;
+            // DVD mode bounces losslessly (perfect reflection) so the drift
+            // never decays; otherwise use the ball's restitution.
+            const e = ball.dvdMode ? 1 : ball.restitution;
             _clTgt.set(nx, ny, _clProj.z).unproject(camera);
             if (hitX) {
                 ball.position.x = _clTgt.x;
                 if ((hitX < 0 && ball.velocity.x < 0) || (hitX > 0 && ball.velocity.x > 0)) {
-                    ball.velocity.x *= -ball.restitution;
+                    ball.velocity.x *= -e;
                 }
             }
             if (hitY) {
                 ball.position.y = _clTgt.y;
                 if ((hitY < 0 && ball.velocity.y < 0) || (hitY > 0 && ball.velocity.y > 0)) {
-                    ball.velocity.y *= -ball.restitution;
+                    ball.velocity.y *= -e;
                 }
             }
             // Re-sync the body mesh to the corrected position (ball.update

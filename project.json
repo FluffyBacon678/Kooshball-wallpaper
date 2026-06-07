@@ -175,6 +175,21 @@
                 "type": "bool",
                 "value": false
             },
+            "dvdMode": {
+                "order": 52,
+                "text": "DVD bounce (drift edge to edge)",
+                "type": "bool",
+                "value": false
+            },
+            "dvdSpeed": {
+                "order": 53,
+                "text": "DVD bounce speed",
+                "type": "slider",
+                "value": 6,
+                "min": 1,
+                "max": 20,
+                "step": 0.5
+            },
 
             "rgbSync": {
                 "order": 60,

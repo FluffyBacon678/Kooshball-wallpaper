@@ -42,6 +42,12 @@
             // position + velocity directly, physics is skipped this frame.
             this.grabbed = false;
 
+            // "DVD bounce" mode: the ball ignores gravity and drifts at a
+            // constant speed, bouncing off the screen edges like the old DVD
+            // screensaver logo. Speed is in world-units/second.
+            this.dvdMode = false;
+            this.dvdSpeed = 6;
+
             // The bounding box. floorY/ceilingY are the y of the floor/ceiling
             // planes; wallX/wallZ are the |x|/|z| bounds. These are recomputed
             // by setBounds() from the camera fit so the ball never escapes
@@ -106,6 +112,16 @@
         setGravity(v) { this.gravity = Math.max(0, v); }
         setRestitution(v) { this.restitution = Math.max(0, Math.min(0.95, v)); }
         setAutoSpinSpeed(v) { this._autoSpinSpeed = v; }
+        setDvdSpeed(v) { this.dvdSpeed = Math.max(0.5, Math.min(30, v)); }
+        setDvdMode(v) {
+            this.dvdMode = !!v;
+            if (this.dvdMode) {
+                // Seed a diagonal drift on the z=0 plane and centre the ball
+                // vertically so it bounces across the whole screen.
+                this.position.z = 0;
+                this.velocity.set(0.8, 0.6, 0).normalize().multiplyScalar(this.dvdSpeed);
+            }
+        }
 
         /**
          * Recompute the invisible bounding box from a target horizontal extent
@@ -169,12 +185,22 @@
             // ball across the screen on its next integration step.
             dt = Math.min(0.033, dt);
 
-            // While the mouse is grabbing the ball, main.js drives position
-            // and velocity each frame. We skip gravity / damping / collisions
-            // entirely — the cursor is the only force. Angular velocity, spin
-            // and the visual transform still update so the ball can roll a
-            // little as it's dragged.
-            if (this.physicsEnabled && !this.grabbed) {
+            // DVD-bounce mode: constant-speed 2D drift, no gravity. The
+            // actual edge bounces are done by the viewport clamp in main.js
+            // (it reflects velocity); here we just integrate and keep the
+            // speed constant so it never slows down or speeds up.
+            if (this.dvdMode && !this.grabbed) {
+                this.position.x += this.velocity.x * dt;
+                this.position.y += this.velocity.y * dt;
+                this.position.z = 0;
+                this.velocity.z = 0;
+                const sp = Math.hypot(this.velocity.x, this.velocity.y);
+                if (sp > 1e-4) {
+                    const k = this.dvdSpeed / sp;
+                    this.velocity.x *= k;
+                    this.velocity.y *= k;
+                }
+            } else if (this.physicsEnabled && !this.grabbed) {
                 // Gravity (downward).
                 this.velocity.y -= this.gravity * dt;
 
