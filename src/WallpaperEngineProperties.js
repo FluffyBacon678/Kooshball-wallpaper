@@ -146,6 +146,12 @@
                 if (autoCustom) colorState.mode = "custom";
                 reapplyColors();
             }
+            if (props.colorCycleSpeed !== undefined) {
+                if (ctx.setColorCycleSpeed) ctx.setColorCycleSpeed(Number(value(props.colorCycleSpeed)));
+            }
+            if (props.brightness !== undefined) {
+                if (ctx.setBrightness) ctx.setBrightness(Number(value(props.brightness)));
+            }
             if (props.backgroundColor) {
                 const c = Marimo.colorModes.parseColor(value(props.backgroundColor),
                     { r: 0.027, g: 0.035, b: 0.043 });
@@ -189,6 +195,10 @@
             if (props.audioReactivity !== undefined) {
                 if (ctx.setAudioReactivity) ctx.setAudioReactivity(Number(value(props.audioReactivity)));
             }
+            if (props.audioBounce !== undefined && ctx.setAudioReact) ctx.setAudioReact("bounce", Boolean(value(props.audioBounce)));
+            if (props.audioPulse  !== undefined && ctx.setAudioReact) ctx.setAudioReact("pulse",  Boolean(value(props.audioPulse)));
+            if (props.audioGlow   !== undefined && ctx.setAudioReact) ctx.setAudioReact("glow",   Boolean(value(props.audioGlow)));
+            if (props.audioHair   !== undefined && ctx.setAudioReact) ctx.setAudioReact("hair",   Boolean(value(props.audioHair)));
 
             // After the first batch (the initial full property load), later
             // batches are treated as live user edits for the custom-color
@@ -201,6 +211,16 @@
             if (props.fps) {
                 const fps = Number(value(props.fps));
                 if (Number.isFinite(fps)) limiter.setTargetFps(fps);
+            }
+            // WE's user-picked scheme colour (general property "schemecolor",
+            // "r g b" floats). Store it; if the active colour mode follows the
+            // scheme, refresh so it retints live.
+            if (props.schemecolor !== undefined) {
+                const c = Marimo.colorModes.parseColor(value(props.schemecolor), null);
+                if (c) {
+                    Marimo.colorModes.setSchemeColor(c);
+                    if (colorState.mode === "scheme" && !colorState.rgbMode) reapplyColors();
+                }
             }
             // Wallpaper Engine sends the `paused` general property when the
             // wallpaper is paused (a game went fullscreen, etc.). When true

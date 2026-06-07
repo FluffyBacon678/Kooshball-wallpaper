@@ -104,7 +104,7 @@ just open it while it's applied). Every setting below is exposed:
 
 | Section     | Setting                     | Default  | Notes |
 |-------------|-----------------------------|----------|-------|
-| Quality     | Quality preset              | High     | Low (3.5k) / Medium (10k) / High (20k) / Ultra (32k) hairs. Picks the strand-count ceiling. |
+| Quality     | Quality preset              | High     | Low (5k) / Medium (14k) / High (28k) / Ultra (45k) hairs. Picks the strand-count ceiling. |
 | Marimo      | Ball size                   | 5.0      | Sphere radius in scene units. |
 | Marimo      | Hair amount                 | 1.0      | Multiplier on the quality preset's strand count. |
 | Marimo      | Hair length                 | 3.0      | Strand length in scene units. |
@@ -114,9 +114,13 @@ just open it while it's applied). Every setting below is exposed:
 | Motion      | Hair wind (advanced)        | 0.0      | Ambient sinusoidal sway on the strands while the ball is still. |
 | Motion      | Ball physics (bounce + move)| On       | When on, the ball is a rigid body — falls, bounces, can be grabbed. Off pins it at the origin. |
 | Motion      | Ball bounce (restitution)   | 0.55     | 0 = no bounce, 0.9 = very bouncy. |
-| Color       | RGB rainbow mode            | Off      | Overrides color mode; cycles hue with time. |
-| Color       | Color mode                  | Natural  | Natural / RGB neon / Blue-cyan / Purple-pink / Custom / Follow Windows accent. |
-| Color       | Custom color (root)         | Dark blue| Used when Color mode = Custom. |
+| Motion      | DVD bounce                  | Off      | Ball drifts at constant speed, bouncing off the screen edges like the DVD logo. |
+| Motion      | DVD bounce speed            | 6        | Drift speed when DVD bounce is on. |
+| Color       | RGB rainbow mode            | Off      | Overrides color mode with the animated "FEVER" rainbow. |
+| Color       | Color mode                  | Natural  | Natural / RGB neon / Rainbow (per strand) / Blue-cyan / Purple-pink / Sunset / Fire / Ocean / Lavender / Gold / Autumn / Ice / Monochrome / Custom / Follow Windows accent / WE scheme color. |
+| Color       | Color cycle speed           | 0.0      | >0 slowly rotates the hue of any palette over time. |
+| Color       | Brightness                  | 1.0      | Master brightness multiplier for the whole marimo. |
+| Color       | Custom color (root)         | Dark blue| Used when Color mode = Custom (dragging it auto-switches to Custom). |
 | Color       | Custom color (tip)          | Light cyan| Used when Color mode = Custom. |
 | Look        | Background color            | Near-black| Sets the clear color and tints the body sphere. |
 | Look        | Show ground shadow          | On       | Soft vignette under the ball. |
@@ -125,7 +129,11 @@ just open it while it's applied). Every setting below is exposed:
 | Interaction | Mouse interaction           | On       | Enables grab-and-throw + scroll-to-depth (see **Controls** below). |
 | Interaction | Mouse breeze                | Off      | Lightly nudges the ball as you move the mouse, even without grabbing it. |
 | RGB         | RGB sync                    | Off      | Off / Bottom bar / Ambilight. Edge color bars for hardware sync (see **RGB hardware sync**). |
-| Audio       | Audio reactivity            | 0.0      | 0 = off. Higher = the marimo jumps on bass and twirls on treble. |
+| Audio       | Audio reactivity            | 0.0      | Master sensitivity. 0 = off. The reactions below only do anything when this is > 0. |
+| Audio       | Audio: bounce               | On       | Bass jumps the ball, treble spins it. |
+| Audio       | Audio: pulse                | Off      | Overall level throbs the ball's size. |
+| Audio       | Audio: glow                 | Off      | Overall level brightens the fur with the beat. |
+| Audio       | Audio: hair                 | Off      | Bass puffs the fur outward (stands on end on beats). |
 | Debug       | Show debug overlay          | Off      | Top-left FPS / hair / position chip. |
 
 Wallpaper Engine's own FPS setting (the *general* properties pane) is
@@ -224,6 +232,20 @@ configure panel.
 If you switch your Windows accent in **Settings → Personalization →
 Colors**, the marimo retints to match.
 
+### Follow the Wallpaper Engine scheme color (built in)
+
+Set **Color mode** = *Wallpaper Engine scheme color*. Wallpaper Engine
+lets you pick a global "scheme color" (Wallpaper → right-click → it's
+exposed in some themes / via the `schemecolor` general property). The
+marimo gradients from a dark variant to that scheme color and updates
+live when you change it.
+
+### Color cycle
+
+Any palette can slowly rotate its hue over time — raise **Color cycle
+speed** above 0. Pair it with a single-hue palette (Fire, Ocean, …) for a
+gentle drift, or leave it on Natural for a subtle shifting glow.
+
 ### Corsair iCUE sync
 
 Wallpaper Engine itself doesn't drive iCUE devices directly — instead,
@@ -261,25 +283,31 @@ sync bar.
 
 ## Audio reactivity
 
-Set **Audio reactivity** above 0 in the configure panel and the marimo
-responds to whatever audio Wallpaper Engine is playing (system audio):
+Set **Audio reactivity** (master sensitivity) above 0, then enable any of
+the four reaction toggles — they can be combined:
 
-- **Bass** beats give the ball an upward impulse — it bounces with the
-  kick drum.
-- **Treble** content adds a gentle spin so the body twirls on hi-hats and
-  cymbals.
+- **Bounce** — bass beats give the ball an upward impulse (it jumps with
+  the kick drum); treble adds a gentle spin.
+- **Pulse** — the ball's overall size throbs with the music's loudness.
+- **Glow** — the fur brightens on the beat (cheap full-marimo brightness
+  pulse, looks great with a dark background).
+- **Hair** — bass puffs the fur outward, so the strands "stand on end" on
+  heavy beats.
 
-The strength scales with the slider (0 = off, 2 = very lively). This uses
-Wallpaper Engine's `wallpaperRegisterAudioListener` API, so it only reacts
-inside Wallpaper Engine — in a plain browser the hook is a harmless no-op.
+Sensitivity scales with the master slider (0 = off, 3 = very lively). This
+uses Wallpaper Engine's `wallpaperRegisterAudioListener` API (128-bin FFT,
+split into bass / mid / treble), so it only reacts inside Wallpaper Engine
+— in a plain browser the hook is a harmless no-op.
 
 ## Customizing further
 
 - **Strand segments**: edit `SEGMENTS` in `src/FurSystem.js`. 7 (the
   current value) matches the original Marimo's `HAIR_DIV-1` and is a sweet
   spot for smoothness vs. CPU. Higher looks softer but costs more.
-- **Damping**: `_damping` in `FurSystem`. 0.985 is bouncy-but-stable.
-  Lower (e.g. 0.97) for a heavier feel.
+- **Damping / stiffness / curl**: `_damping` (0.94), `_stiffness` (0.07)
+  and `_curl` (0.72) in `FurSystem` shape how the fur settles — damping is
+  how fast motion dies, stiffness keeps the ball round at rest, curl makes
+  strands lay over into soft moss vs. straight radial spikes.
 - **Per-quality strand counts**: the `QUALITY_HAIRS` map at the top of
   `src/FurSystem.js`. Increase Ultra if you have a serious GPU.
 - **Adding a color mode**: append to `PRESETS` in

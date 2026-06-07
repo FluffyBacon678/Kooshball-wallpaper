@@ -285,44 +285,53 @@
         }
 
         // ---- Audio reactivity (Wallpaper Engine forwards system audio). ----
-        // Wallpaper Engine calls our registered callback with a Float32Array
-        // of 128 magnitudes (64 per channel, low→high frequency). We extract
-        // bass and treble bands and apply them as ball impulses and a
-        // transient wind boost — the marimo "dances" to music.
-        let audioReactivity = 0.0;
-        let audioBassLevel = 0;
-        let audioTrebleLevel = 0;
-        function setAudioReactivity(v) {
-            audioReactivity = Math.max(0, Math.min(2, Number(v) || 0));
-        }
+        // WE calls our callback with a Float32Array of 128 magnitudes (64 per
+        // channel, low→high frequency). We split bass / mid / treble and an
+        // overall level, smooth them, and drive several independent reactions
+        // the user can toggle:
+        //   bounce — bass jumps the ball, treble spins it
+        //   pulse  — overall level pulses the ball's size
+        //   glow   — overall level brightens the fur
+        //   hair   — bass puffs the fur out (stands on end on beats)
+        let audioReactivity = 0.0;     // master sensitivity
+        const audio = { bass: 0, mid: 0, treble: 0, level: 0 };
+        const audioReact = { bounce: true, pulse: false, glow: false, hair: false };
+        function setAudioReactivity(v) { audioReactivity = Math.max(0, Math.min(3, Number(v) || 0)); }
+        function setAudioReact(key, v) { if (key in audioReact) audioReact[key] = !!v; }
+
         if (typeof global.wallpaperRegisterAudioListener === "function") {
-            global.wallpaperRegisterAudioListener(function (audioData) {
-                if (!audioData || audioReactivity <= 0) return;
-                // Sum the lowest 6 bins from each channel (bass), highest 6 (treble).
-                let bass = 0, treble = 0;
-                for (let i = 0; i < 6; i++) {
-                    bass   += audioData[i] + audioData[64 + i];
-                    treble += audioData[58 + i] + audioData[122 + i];
-                }
-                bass   /= 12;   // normalize
-                treble /= 12;
-                // Light low-pass smoothing — raw audio bins are jittery.
-                audioBassLevel   = audioBassLevel   * 0.55 + bass   * 0.45;
-                audioTrebleLevel = audioTrebleLevel * 0.55 + treble * 0.45;
+            global.wallpaperRegisterAudioListener(function (data) {
+                if (!data || audioReactivity <= 0) return;
+                let bass = 0, mid = 0, treble = 0, level = 0;
+                for (let i = 0; i < 8; i++) { bass   += data[i] + data[64 + i]; }
+                for (let i = 24; i < 32; i++) { mid    += data[i] + data[64 + i]; }
+                for (let i = 56; i < 64; i++) { treble += data[i] + data[64 + i]; }
+                for (let i = 0; i < 64; i++) { level  += data[i] + data[64 + i]; }
+                bass /= 16; mid /= 16; treble /= 16; level /= 128;
+                // Low-pass smoothing — raw bins are jittery.
+                audio.bass   = audio.bass   * 0.5 + bass   * 0.5;
+                audio.mid    = audio.mid    * 0.5 + mid    * 0.5;
+                audio.treble = audio.treble * 0.5 + treble * 0.5;
+                audio.level  = audio.level  * 0.6 + level  * 0.4;
             });
         }
-        function applyAudioToBall() {
-            if (audioReactivity <= 0) return;
+
+        function applyAudio() {
             const k = audioReactivity;
-            // Bass → upward impulse (the marimo "jumps" on heavy bass beats).
-            if (audioBassLevel > 0.05) {
-                ball.applyImpulse(0, audioBassLevel * 4 * k, 0, 0);
+            if (k <= 0) {
+                // Make sure transient effects relax to zero when disabled.
+                ball.setAudioScale(0); fur.setAudioGlow(0); fur.setAudioPuff(0);
+                return;
             }
-            // Treble → bonus angular kick around Y so the body spins
-            // slightly with high-frequency content.
-            if (audioTrebleLevel > 0.05) {
-                ball.angularVelocity.y += audioTrebleLevel * 0.4 * k;
+            if (audioReact.bounce) {
+                if (audio.bass > 0.05)   ball.applyImpulse(0, audio.bass * 4 * k, 0, 0);
+                if (audio.treble > 0.05) ball.angularVelocity.y += audio.treble * 0.4 * k;
             }
+            // Pulse / glow / hair ease toward their target each frame so they
+            // don't flicker; targets are 0 when their toggle is off.
+            ball.setAudioScale(audioReact.pulse ? Math.min(0.4, audio.level * 0.8 * k) : 0);
+            fur.setAudioGlow(audioReact.glow  ? Math.min(1.5, audio.level * 1.6 * k) : 0);
+            fur.setAudioPuff(audioReact.hair  ? Math.min(0.5, audio.bass  * 0.6 * k) : 0);
         }
 
         // ---- Pause detection (Wallpaper Engine sends `paused` general prop). ----
@@ -351,6 +360,9 @@
             rebuildGround: buildGround,
             setRgbSync: setRgbSync,
             setAudioReactivity: setAudioReactivity,
+            setAudioReact: setAudioReact,
+            setColorCycleSpeed: function (v) { fur.setColorCycleSpeed(v); },
+            setBrightness: function (v) { fur.setBrightness(v); },
             setPaused: setPaused
         });
 
@@ -516,7 +528,7 @@
             elapsed += dt;
 
             applyMouseToBall(dt);
-            applyAudioToBall();
+            applyAudio();
             ball.update(dt, elapsed);
             clampBallToViewport();   // hard on-screen guarantee, before hair reads position
             fur.update(dt, elapsed);

@@ -73,11 +73,18 @@
 
             // Color sampler — replaced via setColorMode.
             this._colorSampler = Marimo.colorModes.getSampler("natural");
-            this._colorIsDynamic = false; // set true for rgbNeon
+            this._colorIsDynamic = false; // true for rgbNeon / rainbow (unlit, per-frame)
             this._colorMode = "natural";
             this._colorCustomA = null;
             this._colorCustomB = null;
             this._colorDirty = true;
+
+            // Extended look controls.
+            this._colorCycleSpeed = 0;  // >0 rotates hue over time (per-frame bake)
+            this._brightness = 1;       // master brightness (material multiply)
+            this._audioGlow = 0;        // transient brightness from audio (set per-frame)
+            this._audioPuff = 0;        // transient hair-volume boost from audio
+            this._scratchRGB = [0, 0, 0];
 
             // --- TypedArray simulation state ---
             this._rootDir = Marimo.fibonacciSphere(MAX_HAIRS); // Float32Array length MAX_HAIRS*3
@@ -197,7 +204,7 @@
             // appears fully puffed up at frame 0 rather than "growing in".
             this._initRestState();
             this._recomputeActiveHairs();
-            this._regenerateStaticColors();
+            this._bakeColors(0);
         }
 
         // ---- Setters (driven by user properties) ----
@@ -226,19 +233,25 @@
         setWindStrength(v) { this._windStrength = Math.max(0, Math.min(3, v)); }
         setColorMode(mode, customA, customB) {
             this._colorSampler = Marimo.colorModes.getSampler(mode, customA, customB);
-            this._colorIsDynamic = (mode === "rgbNeon");
+            this._colorIsDynamic = Marimo.colorModes.isUnlitMode(mode);
             this._colorMode = mode;                 // remembered so main can poll
             this._colorCustomA = customA;
             this._colorCustomB = customB;
             this._colorDirty = true;
         }
         getColorMode() { return this._colorMode; }
-        /** Re-resolve the sampler — used by the system-accent poller. */
+        /** Re-resolve the sampler — used by the system-accent / scheme pollers. */
         refreshColorSampler() {
             this._colorSampler = Marimo.colorModes.getSampler(
                 this._colorMode, this._colorCustomA, this._colorCustomB);
             this._colorDirty = true;
         }
+        setColorCycleSpeed(v) { this._colorCycleSpeed = Math.max(0, Math.min(2, v)); this._colorDirty = true; }
+        setBrightness(v) { this._brightness = Math.max(0.1, Math.min(2, v)); }
+        setAudioGlow(v) { this._audioGlow = Math.max(0, v); }
+        setAudioPuff(v) { this._audioPuff = Math.max(0, v); }
+        /** True when colours must be regenerated every frame. */
+        _colorNeedsPerFrame() { return this._colorIsDynamic || this._colorCycleSpeed > 0; }
         setBloomLike(enabled) {
             // Cheap "glow" approximation without a real bloom pass: switch the
             // material to additive blending so overlapping strands brighten.
@@ -280,48 +293,51 @@
             }
         }
 
-        _regenerateStaticColors() {
-            // Pre-bake color attribute for non-dynamic color modes. We compute
-            // per-vertex (per-segment-endpoint) colors via the sampler and
-            // include the "tip diffusion" term that the original adds to hint
-            // at directional lighting in the moss mode.
+        /**
+         * Bake per-vertex colours into the colour buffer.
+         *  - Unlit modes (rgbNeon/rainbow): raw sampler colour, no lighting.
+         *  - Lit modes (gradients): gradient + diffuse + top-whorl brightening.
+         *  - Colour-cycle (>0): rotate every colour's hue by time*speed.
+         * Called once for static modes, or every frame when _colorNeedsPerFrame.
+         */
+        _bakeColors(time) {
             const sampler = this._colorSampler;
-            const time = 0;
             const cb = this._colorBuffer;
+            const unlit = this._colorIsDynamic;
+            const cycle = this._colorCycleSpeed;
+            const out = this._scratchRGB;
+            const rot = cycle > 0
+                ? Marimo.colorModes.makeHueRotator(time * cycle * Math.PI * 2)
+                : null;
             const lightX = -1 / Math.sqrt(21), lightY = -4 / Math.sqrt(21), lightZ = -2 / Math.sqrt(21);
-            for (let h = 0; h < this._activeHairs; h++) {
+            const N = this._activeHairs;
+            for (let h = 0; h < N; h++) {
                 const rb = h * 3;
-                const ny = this._rootDir[rb + 1]; // for "top whorl" boost
-                for (let i = 0; i <= SEGMENTS; i++) {
-                    let t = i / SEGMENTS;
-                    // Tangent direction approximation = root normal (good enough at rest).
+                const ny = this._rootDir[rb + 1];
+                // Lighting terms are per-strand (depend on root dir only).
+                let diffuse = 1;
+                if (!unlit) {
                     const tdiff = Math.max(0, Math.abs(
-                        this._rootDir[rb + 0] * lightX + this._rootDir[rb + 1] * lightY + this._rootDir[rb + 2] * lightZ));
-                    const diffuse = Math.sqrt(Math.max(0.0, 1.0 - tdiff * tdiff));
-                    // Top-whorl brightening (the original: pow(max(0, dist*n.y), 4) on tip).
-                    const tipBoost = Math.pow(Math.max(0, ny), 4) * (i / SEGMENTS);
-                    const tEff = Math.min(1, t + tipBoost * 0.6);
-                    const c = sampler(tEff, h, time);
-                    const off = (h * POINTS_PER_HAIR + i) * 3;
-                    cb[off + 0] = c.r * (0.6 + 0.4 * diffuse);
-                    cb[off + 1] = c.g * (0.6 + 0.4 * diffuse);
-                    cb[off + 2] = c.b * (0.6 + 0.4 * diffuse);
+                        this._rootDir[rb] * lightX + this._rootDir[rb + 1] * lightY + this._rootDir[rb + 2] * lightZ));
+                    diffuse = Math.sqrt(Math.max(0, 1 - tdiff * tdiff));
                 }
-            }
-            this._geom.attributes.color.needsUpdate = true;
-        }
-
-        _updateDynamicColors(time) {
-            const sampler = this._colorSampler;
-            const cb = this._colorBuffer;
-            for (let h = 0; h < this._activeHairs; h++) {
                 for (let i = 0; i <= SEGMENTS; i++) {
                     const t = i / SEGMENTS;
-                    const c = sampler(t, h, time);
+                    let r, g, b;
+                    if (unlit) {
+                        const c = sampler(t, h, time);
+                        r = c.r; g = c.g; b = c.b;
+                    } else {
+                        const tipBoost = Math.pow(Math.max(0, ny), 4) * t;
+                        const c = sampler(Math.min(1, t + tipBoost * 0.6), h, time);
+                        const k = 0.6 + 0.4 * diffuse;
+                        r = c.r * k; g = c.g * k; b = c.b * k;
+                    }
+                    if (rot) { rot(out, r, g, b); r = out[0]; g = out[1]; b = out[2]; }
                     const off = (h * POINTS_PER_HAIR + i) * 3;
-                    cb[off + 0] = c.r;
-                    cb[off + 1] = c.g;
-                    cb[off + 2] = c.b;
+                    cb[off + 0] = r;
+                    cb[off + 1] = g;
+                    cb[off + 2] = b;
                 }
             }
             this._geom.attributes.color.needsUpdate = true;
@@ -356,7 +372,9 @@
             const stiff = 1 - Math.pow(1 - this._stiffness, dt60);
             // Per-hair max radius is derived inside the constraint loop using
             // the per-hair length scale, so each strand has its own envelope.
-            const volume = this._hairVolume;
+            // Audio "puff" temporarily inflates the hair-volume envelope so
+            // the fur stands out on beats.
+            const volume = Math.min(1.4, this._hairVolume + this._audioPuff);
             const baseHairLen2 = this._hairLength;
             const hairScale2 = this._hairLengthScale;
             const hairTangent = this._hairTangent;
@@ -540,12 +558,18 @@
             this._geom.attributes.position.needsUpdate = true;
 
             // -------- 4) color update --------
-            if (this._colorIsDynamic) {
-                this._updateDynamicColors(time);
+            if (this._colorNeedsPerFrame()) {
+                this._bakeColors(time);
             } else if (this._colorDirty) {
-                this._regenerateStaticColors();
+                this._bakeColors(0);
                 this._colorDirty = false;
             }
+
+            // -------- 5) brightness + audio glow (cheap material multiply) --------
+            // material.color multiplies all vertex colours, so this brightens
+            // the whole marimo without touching the per-vertex buffer.
+            const bright = this._brightness * (1 + this._audioGlow);
+            this._material.color.setScalar(bright);
         }
 
         dispose() {

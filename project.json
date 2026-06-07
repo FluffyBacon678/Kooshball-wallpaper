@@ -4,9 +4,12 @@
     "type": "web",
     "file": "index.html",
     "preview": "preview.jpg",
-    "tags": ["Abstract", "Relaxing"],
+    "tags": [
+        "Abstract",
+        "Relaxing"
+    ],
     "visibility": "public",
-    "version": 8,
+    "version": 9,
     "general": {
         "properties": {
             "quality": {
@@ -15,13 +18,24 @@
                 "type": "combo",
                 "value": "high",
                 "options": [
-                    { "label": "Low (5k hairs)", "value": "low" },
-                    { "label": "Medium (14k hairs)", "value": "medium" },
-                    { "label": "High (28k hairs)", "value": "high" },
-                    { "label": "Ultra (45k hairs)", "value": "ultra" }
+                    {
+                        "label": "Low (5k hairs)",
+                        "value": "low"
+                    },
+                    {
+                        "label": "Medium (14k hairs)",
+                        "value": "medium"
+                    },
+                    {
+                        "label": "High (28k hairs)",
+                        "value": "high"
+                    },
+                    {
+                        "label": "Ultra (45k hairs)",
+                        "value": "ultra"
+                    }
                 ]
             },
-
             "ballSize": {
                 "order": 10,
                 "text": "Ball size",
@@ -35,18 +49,18 @@
                 "order": 11,
                 "text": "Hair amount",
                 "type": "slider",
-                "value": 1.0,
+                "value": 1,
                 "min": 0.1,
-                "max": 1.0,
+                "max": 1,
                 "step": 0.01
             },
             "hairLength": {
                 "order": 12,
                 "text": "Hair length",
                 "type": "slider",
-                "value": 3.0,
-                "min": 1.0,
-                "max": 7.0,
+                "value": 3,
+                "min": 1,
+                "max": 7,
                 "step": 0.05
             },
             "hairVolume": {
@@ -55,16 +69,15 @@
                 "type": "slider",
                 "value": 0.6,
                 "min": 0.2,
-                "max": 1.0,
+                "max": 1,
                 "step": 0.01
             },
-
             "gravity": {
                 "order": 20,
                 "text": "Gravity (ball + hair)",
                 "type": "slider",
                 "value": 0.6,
-                "min": 0.0,
+                "min": 0,
                 "max": 2.5,
                 "step": 0.01
             },
@@ -79,7 +92,7 @@
                 "text": "Ball bounce (restitution)",
                 "type": "slider",
                 "value": 0.55,
-                "min": 0.0,
+                "min": 0,
                 "max": 0.9,
                 "step": 0.01
             },
@@ -87,21 +100,20 @@
                 "order": 21,
                 "text": "Auto-rotation speed",
                 "type": "slider",
-                "value": 0.0,
-                "min": 0.0,
-                "max": 1.0,
+                "value": 0,
+                "min": 0,
+                "max": 1,
                 "step": 0.01
             },
             "windStrength": {
                 "order": 22,
                 "text": "Hair wind (advanced)",
                 "type": "slider",
-                "value": 0.0,
-                "min": 0.0,
-                "max": 2.0,
+                "value": 0,
+                "min": 0,
+                "max": 2,
                 "step": 0.01
             },
-
             "rgbMode": {
                 "order": 30,
                 "text": "RGB rainbow mode",
@@ -114,27 +126,102 @@
                 "type": "combo",
                 "value": "natural",
                 "options": [
-                    { "label": "Natural (moss green)", "value": "natural" },
-                    { "label": "RGB neon", "value": "rgbNeon" },
-                    { "label": "Blue / cyan", "value": "blueCyan" },
-                    { "label": "Purple / pink", "value": "purplePink" },
-                    { "label": "Custom (two colors)", "value": "custom" },
-                    { "label": "Follow Windows accent", "value": "systemAccent" }
+                    {
+                        "label": "Natural (moss green)",
+                        "value": "natural"
+                    },
+                    {
+                        "label": "RGB neon (animated)",
+                        "value": "rgbNeon"
+                    },
+                    {
+                        "label": "Rainbow (per strand)",
+                        "value": "rainbow"
+                    },
+                    {
+                        "label": "Blue / cyan",
+                        "value": "blueCyan"
+                    },
+                    {
+                        "label": "Purple / pink",
+                        "value": "purplePink"
+                    },
+                    {
+                        "label": "Sunset",
+                        "value": "sunset"
+                    },
+                    {
+                        "label": "Fire",
+                        "value": "fire"
+                    },
+                    {
+                        "label": "Ocean",
+                        "value": "ocean"
+                    },
+                    {
+                        "label": "Lavender",
+                        "value": "lavender"
+                    },
+                    {
+                        "label": "Gold",
+                        "value": "gold"
+                    },
+                    {
+                        "label": "Autumn",
+                        "value": "autumn"
+                    },
+                    {
+                        "label": "Ice",
+                        "value": "ice"
+                    },
+                    {
+                        "label": "Monochrome",
+                        "value": "mono"
+                    },
+                    {
+                        "label": "Custom (two colors)",
+                        "value": "custom"
+                    },
+                    {
+                        "label": "Follow Windows accent",
+                        "value": "systemAccent"
+                    },
+                    {
+                        "label": "Wallpaper Engine scheme color",
+                        "value": "scheme"
+                    }
                 ]
             },
-            "customColor1": {
+            "colorCycleSpeed": {
                 "order": 32,
+                "text": "Color cycle speed (hue shift)",
+                "type": "slider",
+                "value": 0,
+                "min": 0,
+                "max": 1,
+                "step": 0.01
+            },
+            "brightness": {
+                "order": 33,
+                "text": "Brightness",
+                "type": "slider",
+                "value": 1,
+                "min": 0.3,
+                "max": 1.8,
+                "step": 0.01
+            },
+            "customColor1": {
+                "order": 34,
                 "text": "Custom color (root)",
                 "type": "color",
                 "value": "0.05 0.12 0.20"
             },
             "customColor2": {
-                "order": 33,
+                "order": 35,
                 "text": "Custom color (tip)",
                 "type": "color",
                 "value": "0.85 0.95 1.00"
             },
-
             "backgroundColor": {
                 "order": 40,
                 "text": "Background color",
@@ -151,7 +238,7 @@
                 "order": 42,
                 "text": "Camera zoom (1 = default)",
                 "type": "slider",
-                "value": 1.0,
+                "value": 1,
                 "min": 0.6,
                 "max": 1.8,
                 "step": 0.01
@@ -162,7 +249,6 @@
                 "type": "bool",
                 "value": false
             },
-
             "mouseInteraction": {
                 "order": 50,
                 "text": "Mouse interaction (grab + throw)",
@@ -190,28 +276,59 @@
                 "max": 20,
                 "step": 0.5
             },
-
             "rgbSync": {
                 "order": 60,
                 "text": "RGB sync (iCUE / Razer / Aurora)",
                 "type": "combo",
                 "value": "off",
                 "options": [
-                    { "label": "Off", "value": "off" },
-                    { "label": "Bottom bar (subtle)", "value": "bottom" },
-                    { "label": "Ambilight (all 4 edges)", "value": "ambilight" }
+                    {
+                        "label": "Off",
+                        "value": "off"
+                    },
+                    {
+                        "label": "Bottom bar (subtle)",
+                        "value": "bottom"
+                    },
+                    {
+                        "label": "Ambilight (all 4 edges)",
+                        "value": "ambilight"
+                    }
                 ]
             },
             "audioReactivity": {
                 "order": 61,
-                "text": "Audio reactivity (music / sounds)",
+                "text": "Audio reactivity (master sensitivity)",
                 "type": "slider",
-                "value": 0.0,
-                "min": 0.0,
-                "max": 2.0,
+                "value": 0,
+                "min": 0,
+                "max": 3,
                 "step": 0.01
             },
-
+            "audioBounce": {
+                "order": 62,
+                "text": "Audio: bounce (bass jumps, treble spins)",
+                "type": "bool",
+                "value": true
+            },
+            "audioPulse": {
+                "order": 63,
+                "text": "Audio: pulse (ball size throbs)",
+                "type": "bool",
+                "value": false
+            },
+            "audioGlow": {
+                "order": 64,
+                "text": "Audio: glow (fur brightens)",
+                "type": "bool",
+                "value": false
+            },
+            "audioHair": {
+                "order": 65,
+                "text": "Audio: hair (fur puffs on beats)",
+                "type": "bool",
+                "value": false
+            },
             "debugOverlay": {
                 "order": 90,
                 "text": "Show debug overlay",

@@ -75,6 +75,9 @@
             this._breathPhase = Math.random() * Math.PI * 2;
             this._breathAmp = 0.005;
 
+            // Transient scale pulse driven by audio (set per-frame by main).
+            this._audioScale = 0;
+
             // --- Body mesh ---
             this._geom = new THREE.SphereGeometry(this.baseRadius * 0.98, 48, 32);
             this._mat = new THREE.MeshStandardMaterial({
@@ -113,6 +116,7 @@
         setRestitution(v) { this.restitution = Math.max(0, Math.min(0.95, v)); }
         setAutoSpinSpeed(v) { this._autoSpinSpeed = v; }
         setDvdSpeed(v) { this.dvdSpeed = Math.max(0.5, Math.min(30, v)); }
+        setAudioScale(v) { this._audioScale = v; }
         setDvdMode(v) {
             this.dvdMode = !!v;
             if (this.dvdMode) {
@@ -285,7 +289,8 @@
             }
 
             // Breathing (radius pulsation, ~1.8% amplitude).
-            const breath = Math.sin(time * 0.6 + this._breathPhase) * this._breathAmp + 1.0;
+            const breath = Math.sin(time * 0.6 + this._breathPhase) * this._breathAmp + 1.0
+                + this._audioScale;
             this.radius = this.baseRadius * breath;
             this.mesh.scale.setScalar(breath);
 

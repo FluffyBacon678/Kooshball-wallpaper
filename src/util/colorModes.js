@@ -67,13 +67,84 @@
         };
     }
 
+    // HSV → RGB (h,s,v in 0..1). Used by the spatial-rainbow sampler.
+    function hsv(h, s, v) {
+        h = (h % 1 + 1) % 1;
+        const i = Math.floor(h * 6);
+        const f = h * 6 - i;
+        const p = v * (1 - s);
+        const q = v * (1 - f * s);
+        const t = v * (1 - (1 - f) * s);
+        switch (i % 6) {
+            case 0: return { r: v, g: t, b: p };
+            case 1: return { r: q, g: v, b: p };
+            case 2: return { r: p, g: v, b: t };
+            case 3: return { r: p, g: q, b: v };
+            case 4: return { r: t, g: p, b: v };
+            default: return { r: v, g: p, b: q };
+        }
+    }
+
+    // Spatial rainbow: each strand gets its own hue (golden-ratio spread),
+    // brighter toward the tip. Looks like a multicolor koosh ball.
+    function rainbow(t, hairIndex /*, time */) {
+        const hue = (hairIndex * 0.61803398875) % 1;
+        const c = hsv(hue, 0.85, 0.45 + 0.55 * t);
+        return c;
+    }
+
     const PRESETS = {
-        natural: makeGradient({ r: 0.04, g: 0.16, b: 0.06 }, { r: 0.55, g: 0.95, b: 0.35 }),
-        blueCyan: makeGradient({ r: 0.02, g: 0.08, b: 0.30 }, { r: 0.35, g: 0.95, b: 1.00 }),
+        natural:    makeGradient({ r: 0.04, g: 0.16, b: 0.06 }, { r: 0.55, g: 0.95, b: 0.35 }),
+        blueCyan:   makeGradient({ r: 0.02, g: 0.08, b: 0.30 }, { r: 0.35, g: 0.95, b: 1.00 }),
         purplePink: makeGradient({ r: 0.18, g: 0.02, b: 0.30 }, { r: 1.00, g: 0.45, b: 0.85 }),
-        rgbNeon: rgbNeon
-        // "systemAccent" is built dynamically — see buildSystemAccentSampler() below.
+        // --- extended palettes ---
+        sunset:     makeGradient({ r: 0.30, g: 0.05, b: 0.20 }, { r: 1.00, g: 0.62, b: 0.20 }),
+        fire:       makeGradient({ r: 0.25, g: 0.02, b: 0.00 }, { r: 1.00, g: 0.85, b: 0.20 }),
+        ocean:      makeGradient({ r: 0.01, g: 0.10, b: 0.20 }, { r: 0.10, g: 0.80, b: 0.70 }),
+        lavender:   makeGradient({ r: 0.12, g: 0.08, b: 0.22 }, { r: 0.80, g: 0.70, b: 1.00 }),
+        gold:       makeGradient({ r: 0.18, g: 0.10, b: 0.00 }, { r: 1.00, g: 0.84, b: 0.40 }),
+        autumn:     makeGradient({ r: 0.20, g: 0.06, b: 0.02 }, { r: 0.95, g: 0.50, b: 0.10 }),
+        ice:        makeGradient({ r: 0.10, g: 0.16, b: 0.28 }, { r: 0.85, g: 0.95, b: 1.00 }),
+        mono:       makeGradient({ r: 0.08, g: 0.08, b: 0.08 }, { r: 0.95, g: 0.95, b: 0.95 }),
+        rgbNeon:    rgbNeon,
+        rainbow:    rainbow
+        // "systemAccent" / "scheme" are built dynamically (see below).
     };
+
+    // --- Hue rotation (fast YIQ matrix). Used for the color-cycle option. ---
+    // Returns a function (r,g,b)->{r,g,b}; build the matrix ONCE per frame and
+    // reuse it across all vertices (it depends only on the angle).
+    function makeHueRotator(angleRad) {
+        const U = Math.cos(angleRad), W = Math.sin(angleRad);
+        const m00 = 0.299 + 0.701 * U + 0.168 * W;
+        const m01 = 0.587 - 0.587 * U + 0.330 * W;
+        const m02 = 0.114 - 0.114 * U - 0.497 * W;
+        const m10 = 0.299 - 0.299 * U - 0.328 * W;
+        const m11 = 0.587 + 0.413 * U + 0.035 * W;
+        const m12 = 0.114 - 0.114 * U + 0.292 * W;
+        const m20 = 0.299 - 0.300 * U + 1.250 * W;
+        const m21 = 0.587 - 0.588 * U - 1.050 * W;
+        const m22 = 0.114 + 0.886 * U - 0.203 * W;
+        return function (out, r, g, b) {
+            out[0] = m00 * r + m01 * g + m02 * b;
+            out[1] = m10 * r + m11 * g + m12 * b;
+            out[2] = m20 * r + m21 * g + m22 * b;
+        };
+    }
+
+    // --- Wallpaper Engine scheme color ---
+    // WE passes the user's picked scheme color via the `schemecolor` general
+    // property ("r g b" floats). We store it and build a dark→scheme gradient.
+    let schemeColor = { r: 0.25, g: 0.55, b: 1.00 };
+    function setSchemeColor(rgb) { if (rgb) schemeColor = rgb; }
+    function getSchemeColor() { return schemeColor; }
+    function buildSchemeSampler() {
+        const c = schemeColor;
+        return makeGradient(
+            { r: c.r * 0.10, g: c.g * 0.10, b: c.b * 0.10 },
+            { r: Math.min(1, c.r * 1.1), g: Math.min(1, c.g * 1.1), b: Math.min(1, c.b * 1.1) }
+        );
+    }
 
     // --- System (Windows) accent color sync ---
     //
@@ -140,15 +211,29 @@
         if (mode === "systemAccent") {
             return buildSystemAccentSampler();
         }
+        if (mode === "scheme") {
+            return buildSchemeSampler();
+        }
         return PRESETS[mode] || PRESETS.natural;
+    }
+
+    // True for modes whose colors do not depend on per-vertex lighting and
+    // must be regenerated every frame (rgbNeon animates; rainbow is per-hair
+    // flat). Gradients are "lit" and only need a static bake.
+    function isUnlitMode(mode) {
+        return mode === "rgbNeon" || mode === "rainbow";
     }
 
     Marimo.colorModes = {
         parseColor: parseColor,
         getSampler: getSampler,
+        isUnlitMode: isUnlitMode,
+        makeHueRotator: makeHueRotator,
         PRESETS: PRESETS,
         getSystemAccent: getSystemAccent,
         isSystemAccentSupported: isSystemAccentSupported,
-        buildSystemAccentSampler: buildSystemAccentSampler
+        buildSystemAccentSampler: buildSystemAccentSampler,
+        setSchemeColor: setSchemeColor,
+        getSchemeColor: getSchemeColor
     };
 })(window);
