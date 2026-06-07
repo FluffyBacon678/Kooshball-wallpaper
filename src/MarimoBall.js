@@ -270,8 +270,18 @@
                 this.quaternion.premultiply(this._dq);
             }
 
+            // Clamp angular velocity to a sane maximum. Repeated throws,
+            // rolling friction and audio spin can otherwise accumulate into a
+            // runaway spin on one axis (the "suddenly spinning very fast"
+            // bug). MAX_ANGULAR ≈ 0.8 rev/s keeps it lively but controlled.
+            const MAX_ANGULAR = 5.0;
+            let angLen = this.angularVelocity.length();
+            if (angLen > MAX_ANGULAR) {
+                this.angularVelocity.multiplyScalar(MAX_ANGULAR / angLen);
+                angLen = MAX_ANGULAR;
+            }
+
             // Angular velocity → quaternion integration (rigid-body spin).
-            const angLen = this.angularVelocity.length();
             if (angLen > 1e-5) {
                 this._scratchAxis.copy(this.angularVelocity).divideScalar(angLen);
                 this._dq.setFromAxisAngle(this._scratchAxis, angLen * dt);

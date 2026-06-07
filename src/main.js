@@ -165,6 +165,7 @@
         let mouseHasSample = false;
         let mouseGrabbed = false;
         let mouseIsDown = false;
+        let mouseClientX = 0, mouseClientY = 0;   // raw cursor, reprojected each frame
         // "Mouse breeze": gently nudge the ball with mouse movement even when
         // the cursor isn't over (grabbing) the ball. Toggled by a user prop.
         let mouseFollow = false;
@@ -179,10 +180,12 @@
         }
         function setMouseFollow(v) { mouseFollow = !!v; }
 
-        // Project the screen-space mouse to the z=0 plane in world space.
+        // Project the screen-space cursor onto an arbitrary world plane z=planeZ.
+        // Using the ball's current z (instead of a fixed z=0) keeps grab/drag
+        // correct even when the ball has rolled toward or away from the camera.
         const _ndc = new THREE.Vector3();
         const _dir = new THREE.Vector3();
-        function projectMouseToWorld(clientX, clientY, out) {
+        function projectMouseToWorld(clientX, clientY, planeZ, out) {
             _ndc.set(
                 (clientX / window.innerWidth) * 2 - 1,
                 -(clientY / window.innerHeight) * 2 + 1,
@@ -190,21 +193,39 @@
             );
             _ndc.unproject(camera);
             _dir.copy(_ndc).sub(camera.position).normalize();
-            // Parametric ray hit z=0 plane.
-            const t = -camera.position.z / _dir.z;
+            const t = (planeZ - camera.position.z) / _dir.z;
             out.copy(camera.position).addScaledVector(_dir, t);
             return out;
         }
 
+        // Perpendicular distance from the ball centre to the picking ray —
+        // a depth-independent "is the cursor over the ball?" test, so a ball
+        // far from the camera is still grabbable when you click on it.
+        const _rayV = new THREE.Vector3();
+        function mouseRayDistanceToBall() {
+            _ndc.set(
+                (mouseClientX / window.innerWidth) * 2 - 1,
+                -(mouseClientY / window.innerHeight) * 2 + 1,
+                0.5
+            );
+            _ndc.unproject(camera);
+            _dir.copy(_ndc).sub(camera.position).normalize();
+            _rayV.copy(ball.position).sub(camera.position);
+            const t = _rayV.dot(_dir);
+            // closest point on ray = camera + dir*t; distance to ball centre:
+            _rayV.copy(camera.position).addScaledVector(_dir, t).sub(ball.position);
+            return _rayV.length();
+        }
+
         function onMouseMove(ev) {
             if (!mouseEnabled) return;
-            projectMouseToWorld(ev.clientX, ev.clientY, mouseWorld);
+            mouseClientX = ev.clientX; mouseClientY = ev.clientY;
             mouseHasSample = true;
         }
         function onMouseDown(ev) {
             if (!mouseEnabled) return;
             if (ev.button !== undefined && ev.button !== 0) return;  // left button only
-            projectMouseToWorld(ev.clientX, ev.clientY, mouseWorld);
+            mouseClientX = ev.clientX; mouseClientY = ev.clientY;
             mouseHasSample = true;
             mouseIsDown = true;
         }
@@ -417,19 +438,20 @@
         function applyMouseToBall(dt) {
             if (!mouseEnabled || !mouseHasSample) return;
 
-            // Distance cursor → ball in world space.
-            const dx = mouseWorld.x - ball.position.x;
-            const dy = mouseWorld.y - ball.position.y;
-            const dz = mouseWorld.z - ball.position.z;
-            const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
+            // Project the cursor onto the ball's CURRENT depth plane so drag
+            // tracking and the breeze work no matter how far the ball has
+            // travelled toward/away from the camera.
+            projectMouseToWorld(mouseClientX, mouseClientY, ball.position.z, mouseWorld);
 
-            // Silhouette radius for the initial grab.
-            const grabRadius = ball.baseRadius * 1.4;
-            // Generous safety release radius.
-            const releaseRadius = ball.baseRadius * 6.0;
+            // Grab test uses the perpendicular distance from the ball centre
+            // to the picking ray — depth-independent, so a far ball is still
+            // grabbable. Release uses the same metric with a generous radius.
+            const rayDist = mouseRayDistanceToBall();
+            const grabRadius = ball.baseRadius * 1.5;
+            const releaseRadius = ball.baseRadius * 4.0;
 
             if (mouseGrabbed) {
-                if (!mouseIsDown || dist > releaseRadius) {
+                if (!mouseIsDown || rayDist > releaseRadius) {
                     mouseGrabbed = false;
                     ball.grabbed = false;
                     // Angular kick coupled to the throw direction — so the
@@ -460,7 +482,7 @@
                     ball.velocity.y = (ball.position.y - prevY) * invDt;
                     // velocity.z untouched — physics carries it
                 }
-            } else if (mouseIsDown && dist < grabRadius) {
+            } else if (mouseIsDown && rayDist < grabRadius) {
                 mouseGrabbed = true;
                 ball.grabbed = true;
             } else if (mouseFollow) {
