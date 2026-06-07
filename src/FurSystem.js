@@ -50,6 +50,7 @@
             // --- Tunables (settable at any time via setters) ---
             this._quality = opts.quality || "medium";
             this._maxForQuality = QUALITY_HAIRS[this._quality];
+            this._adaptiveScale = 1.0; // auto-perf multiplier (FPS controller)
             this._hairAmount = opts.hairAmount != null ? opts.hairAmount : 1.0; // 0..1
             this._hairLength = opts.hairLength != null ? opts.hairLength : 4.0;
             this._hairVolume = opts.hairVolume != null ? opts.hairVolume : 0.7;  // 0..1
@@ -258,11 +259,22 @@
 
         getActiveHairCount() { return this._activeHairs; }
         getSegments() { return SEGMENTS; }
+        // Adaptive performance scale [0.2..1] applied on top of the user's
+        // quality + hair-amount, driven by the FPS controller in main.js.
+        setAdaptiveScale(v) {
+            const s = Math.max(0.2, Math.min(1, v));
+            if (Math.abs(s - this._adaptiveScale) < 0.005) return;
+            this._adaptiveScale = s;
+            this._recomputeActiveHairs();
+            this._colorDirty = true;
+        }
+        getAdaptiveScale() { return this._adaptiveScale; }
 
         // ---- Internal helpers ----
 
         _recomputeActiveHairs() {
-            this._activeHairs = Math.max(50, Math.floor(this._maxForQuality * this._hairAmount));
+            this._activeHairs = Math.max(50, Math.floor(
+                this._maxForQuality * this._hairAmount * this._adaptiveScale));
             // Update draw range — each strand contributes SEGMENTS*2 indices.
             this._geom.setDrawRange(0, this._activeHairs * SEGMENTS * 2);
         }

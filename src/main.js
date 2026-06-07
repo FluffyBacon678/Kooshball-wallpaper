@@ -341,6 +341,18 @@
         let paused = false;
         function setPaused(v) { paused = !!v; }
 
+        // Adaptive-quality state — declared before attach() because the
+        // initial property replay can call setAdaptiveQuality synchronously
+        // (the controller logic itself lives further down).
+        let adaptiveEnabled = true;
+        let adaptiveScale = 1.0;
+        let workEMA = 6;          // ms, EMA of per-frame CPU work
+        let adaptAccum = 0;
+        function setAdaptiveQuality(v) {
+            adaptiveEnabled = !!v;
+            if (!adaptiveEnabled) { adaptiveScale = 1.0; fur.setAdaptiveScale(1.0); }
+        }
+
         // ---- Wire Wallpaper Engine properties. ----
         Marimo.WallpaperEngineProperties.attach({
             ball: ball,
@@ -363,6 +375,7 @@
             setAudioReact: setAudioReact,
             setColorCycleSpeed: function (v) { fur.setColorCycleSpeed(v); },
             setBrightness: function (v) { fur.setBrightness(v); },
+            setAdaptiveQuality: setAdaptiveQuality,
             setPaused: setPaused
         });
 
@@ -517,6 +530,30 @@
             ball.mesh.position.copy(ball.position);
         }
 
+        // ---- Adaptive quality controller. ----
+        // Keeps the wallpaper smooth on any hardware / refresh rate: it
+        // measures the real CPU work per rendered frame (sim + render submit)
+        // and, if that work won't fit the frame budget, trims the hair count;
+        // when there's spare headroom it restores hair up to the user's
+        // chosen quality. (State is declared above attach(); this is the
+        // per-frame logic.)
+        function updateAdaptive(dt) {
+            if (!adaptiveEnabled) return;
+            adaptAccum += dt;
+            if (adaptAccum < 0.5) return;   // re-evaluate ~twice a second
+            adaptAccum = 0;
+            const budget = 1000 / Math.max(15, limiter.getTargetFps());
+            // Reduce if work is eating most of the budget; recover if there's
+            // clear headroom. The gap between the thresholds prevents hunting.
+            if (workEMA > budget * 0.85 && adaptiveScale > 0.2) {
+                adaptiveScale = Math.max(0.2, adaptiveScale - 0.08);
+                fur.setAdaptiveScale(adaptiveScale);
+            } else if (workEMA < budget * 0.5 && adaptiveScale < 1) {
+                adaptiveScale = Math.min(1, adaptiveScale + 0.05);
+                fur.setAdaptiveScale(adaptiveScale);
+            }
+        }
+
         function frame(now) {
             global.requestAnimationFrame(frame);
             if (docHidden || paused) return;
@@ -527,12 +564,16 @@
             last = now;
             elapsed += dt;
 
+            const workStart = performance.now();
             applyMouseToBall(dt);
             applyAudio();
             ball.update(dt, elapsed);
             clampBallToViewport();   // hard on-screen guarantee, before hair reads position
             fur.update(dt, elapsed);
             renderer.render(scene, camera);
+            // EMA of the per-frame work time (CPU sim + render submit).
+            workEMA += ((performance.now() - workStart) - workEMA) * 0.1;
+            updateAdaptive(dt);
             updateRgbSyncBars(dt);
 
             // Debug overlay (only when visible).
@@ -546,9 +587,10 @@
                     const p = ball.position, v = ball.velocity;
                     overlay.textContent =
                         "FPS " + fps + "  /  target " + tgt + "\n" +
-                        "Hairs " + hairs + " × " + fur.getSegments() + " seg\n" +
+                        "Work " + workEMA.toFixed(1) + " ms  (budget " + (1000 / tgt).toFixed(1) + ")\n" +
+                        "Hairs " + hairs + " × " + fur.getSegments() + " seg  (adapt " +
+                            (adaptiveEnabled ? (adaptiveScale * 100).toFixed(0) + "%" : "off") + ")\n" +
                         "Ball pos " + p.x.toFixed(1) + "," + p.y.toFixed(1) + "," + p.z.toFixed(1) + "\n" +
-                        "Ball vel " + v.x.toFixed(2) + "," + v.y.toFixed(2) + "," + v.z.toFixed(2) + "\n" +
                         "DPR " + (renderer.getPixelRatio()).toFixed(2) + "  " +
                         window.innerWidth + "×" + window.innerHeight;
                 }

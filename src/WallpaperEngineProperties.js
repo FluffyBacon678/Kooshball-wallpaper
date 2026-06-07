@@ -152,6 +152,9 @@
             if (props.brightness !== undefined) {
                 if (ctx.setBrightness) ctx.setBrightness(Number(value(props.brightness)));
             }
+            if (props.adaptiveQuality !== undefined) {
+                if (ctx.setAdaptiveQuality) ctx.setAdaptiveQuality(Boolean(value(props.adaptiveQuality)));
+            }
             if (props.backgroundColor) {
                 const c = Marimo.colorModes.parseColor(value(props.backgroundColor),
                     { r: 0.027, g: 0.035, b: 0.043 });

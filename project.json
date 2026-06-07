@@ -9,7 +9,7 @@
         "Relaxing"
     ],
     "visibility": "public",
-    "version": 10,
+    "version": 11,
     "general": {
         "properties": {
             "quality": {
@@ -35,6 +35,12 @@
                         "value": "ultra"
                     }
                 ]
+            },
+            "adaptiveQuality": {
+                "order": 2,
+                "text": "Adaptive quality (auto-smooth FPS)",
+                "type": "bool",
+                "value": true
             },
             "ballSize": {
                 "order": 10,
