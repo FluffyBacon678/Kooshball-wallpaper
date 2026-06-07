@@ -9,7 +9,7 @@
         "Relaxing"
     ],
     "visibility": "public",
-    "version": 9,
+    "version": 10,
     "general": {
         "properties": {
             "quality": {
@@ -236,7 +236,7 @@
             },
             "cameraDistance": {
                 "order": 42,
-                "text": "Camera zoom (1 = default)",
+                "text": "Camera distance (lower = closer/bigger)",
                 "type": "slider",
                 "value": 1,
                 "min": 0.6,

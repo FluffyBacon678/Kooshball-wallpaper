@@ -124,7 +124,7 @@ just open it while it's applied). Every setting below is exposed:
 | Color       | Custom color (tip)          | Light cyan| Used when Color mode = Custom. |
 | Look        | Background color            | Near-black| Sets the clear color and tints the body sphere. |
 | Look        | Show ground shadow          | On       | Soft vignette under the ball. |
-| Look        | Camera zoom                 | 1.0      | 0.6 = wider, 1.8 = closer. |
+| Look        | Camera distance             | 1.0      | 0.6 = camera closer (ball bigger), 1.8 = farther (ball smaller). |
 | Look        | Glow (additive blending)    | Off      | Strand additive blending — great in dark modes, can wash out light backgrounds. |
 | Interaction | Mouse interaction           | On       | Enables grab-and-throw + scroll-to-depth (see **Controls** below). |
 | Interaction | Mouse breeze                | Off      | Lightly nudges the ball as you move the mouse, even without grabbing it. |
