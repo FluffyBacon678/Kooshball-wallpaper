@@ -90,6 +90,25 @@
 
         function setGroundVisible(v) { groundGroup.visible = !!v; }
 
+        // Per-frame: the soft shadow follows the ball horizontally and grows
+        // + fades as the ball rises, so it reads as cast by the ball rather
+        // than a fixed disc at the origin. (y stays pinned to the floor by
+        // refit(); we only move x/z and scale here.)
+        function updateGroundShadow() {
+            if (!groundGroup.visible) return;
+            groundGroup.position.x = ball.position.x;
+            groundGroup.position.z = ball.position.z * 0.5; // depth foreshortened
+            const restY = ball.floorY + ball.baseRadius;
+            const h = Math.max(0, ball.position.y - restY);
+            const hN = Math.min(1, h / (ball.baseRadius * 3.5));
+            // Higher ball → larger + fainter shadow. With MultiplyBlending the
+            // darkness is the disc colour, so we lighten it toward white
+            // (>1 pushes the dark vertex colours up, fading the shadow).
+            const s = 1 + hN * 0.7;
+            groundGroup.scale.set(s, 1, s);
+            if (groundMesh) groundMesh.material.color.setScalar(1 + hN * 1.3);
+        }
+
         // ---- Auto-fit camera + bounds. ----
         // We compute the visible half-extent at the ball's z-plane from the
         // camera's frustum, then hand both that and the camera distance to
@@ -607,6 +626,7 @@
             ball.update(dt, elapsed);
             clampBallToViewport();   // hard on-screen guarantee, before hair reads position
             fur.update(dt, elapsed);
+            updateGroundShadow();
             if (bloomEnabled) bloom.render(scene, camera);
             else renderer.render(scene, camera);
             // EMA of the per-frame work time (CPU sim + render submit).
