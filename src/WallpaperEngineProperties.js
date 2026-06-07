@@ -179,6 +179,12 @@
             if (props.dvdMode !== undefined) {
                 if (ctx.setDvdMode) ctx.setDvdMode(Boolean(value(props.dvdMode)));
             }
+            if (props.idleDrift !== undefined) {
+                if (ctx.setIdleDrift) ctx.setIdleDrift(Boolean(value(props.idleDrift)));
+            }
+            if (props.idleDriftSpeed !== undefined) {
+                if (ctx.setIdleDriftSpeed) ctx.setIdleDriftSpeed(Number(value(props.idleDriftSpeed)));
+            }
             if (props.cameraDistance) {
                 if (ctx.setCameraZoom) ctx.setCameraZoom(Number(value(props.cameraDistance)));
             }

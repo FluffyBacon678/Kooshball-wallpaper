@@ -117,6 +117,8 @@ just open it while it's applied). Every setting below is exposed:
 | Motion      | Ball bounce (restitution)   | 0.55     | 0 = no bounce, 0.9 = very bouncy. |
 | Motion      | DVD bounce                  | Off      | Ball drifts at constant speed, bouncing off the screen edges like the DVD logo. |
 | Motion      | DVD bounce speed            | 6        | Drift speed when DVD bounce is on. |
+| Motion      | Idle drift                  | On       | When left untouched, gravity gently fades and the ball free-floats, wandering the frame so it's never frozen. Any interaction restores gravity for a normal fall + bounce. It never re-centers — it roams freely. |
+| Motion      | Idle drift speed            | 2.5      | How briskly it wanders (0 = stays put / disabled). |
 | Color       | RGB rainbow mode            | Off      | Overrides color mode with the animated "FEVER" rainbow. |
 | Color       | Color mode                  | Natural  | Natural / RGB neon / Rainbow (per strand) / Blue-cyan / Purple-pink / Sunset / Fire / Ocean / Lavender / Gold / Autumn / Ice / Monochrome / Custom / Follow Windows accent / WE scheme color. |
 | Color       | Color cycle speed           | 0.0      | >0 slowly rotates the hue of any palette over time. |

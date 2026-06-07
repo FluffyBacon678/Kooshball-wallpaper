@@ -48,6 +48,15 @@
             this.dvdMode = false;
             this.dvdSpeed = 6;
 
+            // Idle drift: gentle free-floating wander when left untouched.
+            this.idleDrift = true;
+            this.idleDriftSpeed = 2.5;   // world-units/s of wander
+            this._idleT = 0;             // seconds since last disturbance
+            this._driftPh = [
+                Math.random() * 6.28, Math.random() * 6.28,
+                Math.random() * 6.28, Math.random() * 6.28
+            ];
+
             // The bounding box. floorY/ceilingY are the y of the floor/ceiling
             // planes; wallX/wallZ are the |x|/|z| bounds. These are recomputed
             // by setBounds() from the camera fit so the ball never escapes
@@ -116,6 +125,10 @@
         setRestitution(v) { this.restitution = Math.max(0, Math.min(0.95, v)); }
         setAutoSpinSpeed(v) { this._autoSpinSpeed = v; }
         setDvdSpeed(v) { this.dvdSpeed = Math.max(0.5, Math.min(30, v)); }
+        setIdleDrift(v) { this.idleDrift = !!v; }
+        setIdleDriftSpeed(v) { this.idleDriftSpeed = Math.max(0, Math.min(8, v)); }
+        /** Reset the idle timer — called whenever the ball is interacted with. */
+        notifyDisturbed() { this._idleT = 0; }
         setAudioScale(v) { this._audioScale = v; }
         setDvdMode(v) {
             this.dvdMode = !!v;
@@ -160,6 +173,8 @@
          */
         applyImpulse(vx, vy, vz, spinFactor) {
             if (!this.physicsEnabled) return;
+            // Any push counts as a disturbance → restore gravity, pause idle.
+            this._idleT = 0;
             this.velocity.x += vx;
             this.velocity.y += vy;
             this.velocity.z += vz;
@@ -195,14 +210,42 @@
                     this.velocity.y *= k;
                 }
             } else if (this.physicsEnabled && !this.grabbed) {
-                // Gravity (downward).
-                this.velocity.y -= this.gravity * dt;
+                // Idle drift: once the ball has been left alone for a moment,
+                // gravity gently fades out and the ball free-floats, wandering
+                // the screen on smooth noise so it never looks frozen. Any
+                // interaction (grab/throw/scroll/audio) resets the timer via
+                // notifyDisturbed(), restoring full gravity for a satisfying
+                // fall + bounce. It never pulls back to centre — it's free.
+                this._idleT += dt;
+                let idleF = 0;
+                if (this.idleDrift && this.idleDriftSpeed > 0) {
+                    idleF = Math.max(0, Math.min(1, (this._idleT - 1.5) / 2.5));
+                }
 
-                // Exponential damping — framerate-independent.
-                const linDamp = Math.exp(-this.linearDamping * dt);
+                // Gravity (faded out as idle drift engages).
+                this.velocity.y -= this.gravity * dt * (1 - idleF);
+
+                // Exponential damping — framerate-independent. Eased back
+                // during idle so the wander velocity isn't immediately bled
+                // away (otherwise it just hovers near the floor).
+                const linDamp = Math.exp(-this.linearDamping * (1 - idleF * 0.85) * dt);
                 this.velocity.multiplyScalar(linDamp);
                 const angDamp = Math.exp(-this.angularDamping * dt);
                 this.angularVelocity.multiplyScalar(angDamp);
+
+                // Wander toward a slowly-roaming target velocity from smooth
+                // noise, so the ball freely meanders the whole frame.
+                if (idleF > 0) {
+                    const p = this._driftPh;
+                    const wx = Math.sin(time * 0.13 + p[0]) + 0.5 * Math.sin(time * 0.31 + p[1]);
+                    const wy = Math.sin(time * 0.11 + p[2]) + 0.5 * Math.sin(time * 0.27 + p[3]);
+                    const sp = this.idleDriftSpeed * idleF;
+                    const tvx = wx * 0.8 * sp;
+                    const tvy = wy * 0.6 * sp;
+                    const ease = Math.min(1, dt * 1.6);
+                    this.velocity.x += (tvx - this.velocity.x) * ease;
+                    this.velocity.y += (tvy - this.velocity.y) * ease;
+                }
 
                 // Integrate position.
                 this.position.x += this.velocity.x * dt;

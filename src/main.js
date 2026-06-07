@@ -412,6 +412,8 @@
             setMouseFollow: setMouseFollow,
             setDvdMode: function (v) { ball.setDvdMode(v); },
             setDvdSpeed: function (v) { ball.setDvdSpeed(v); },
+            setIdleDrift: function (v) { ball.setIdleDrift(v); },
+            setIdleDriftSpeed: function (v) { ball.setIdleDriftSpeed(v); },
             setDebugVisible: setDebugVisible,
             setGroundVisible: setGroundVisible,
             setCameraZoom: setCameraZoom,
@@ -473,6 +475,7 @@
                 if (!mouseIsDown || rayDist > releaseRadius) {
                     mouseGrabbed = false;
                     ball.grabbed = false;
+                    ball.notifyDisturbed();   // resume gravity; restart idle timer
                     // Angular kick coupled to the throw direction — so the
                     // ball rolls/tumbles. We also seed a small Z velocity
                     // proportional to throw magnitude so even a pure-2D drag
@@ -504,6 +507,7 @@
             } else if (mouseIsDown && rayDist < grabRadius) {
                 mouseGrabbed = true;
                 ball.grabbed = true;
+                ball.notifyDisturbed();
             } else if (mouseFollow) {
                 // Mouse breeze: convert this frame's cursor movement into a
                 // light impulse on the ball, even though it isn't grabbed.
