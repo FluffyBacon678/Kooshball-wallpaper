@@ -19,7 +19,6 @@
             this._emaFps = 60;
             this._emaAlpha = 0.05;
             this._frameCount = 0;
-            this._startTime = performance.now();
         }
 
         /**

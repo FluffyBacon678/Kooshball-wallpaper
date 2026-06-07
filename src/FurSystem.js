@@ -196,10 +196,6 @@
             this._lineSegments.frustumCulled = false; // always visible — we never move it
             scene.add(this._lineSegments);
 
-            // Scratch.
-            this._scratchRoot = new THREE.Vector3();
-            this._scratchTmp = new THREE.Vector3();
-
             // Place all strands at rest (extended radially) so the marimo
             // appears fully puffed up at frame 0 rather than "growing in".
             this._initRestState();

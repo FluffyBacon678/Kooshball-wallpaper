@@ -172,16 +172,6 @@
             }
         }
 
-        /**
-         * Reset position/velocity to the rest pose. Used when physics is
-         * toggled or when the user changes ball size mid-flight.
-         */
-        resetToRest() {
-            this.position.set(0, Math.max(this.floorY + this.baseRadius, 0), 0);
-            this.velocity.set(0, 0, 0);
-            this.angularVelocity.set(0, 0, 0);
-        }
-
         // ---- Per-frame update ----
 
         update(dt, time) {
