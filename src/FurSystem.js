@@ -46,6 +46,8 @@
             opts = opts || {};
             this._ball = ball;
             this._scene = scene;
+            // Per-instance seed so multiple marimos get distinct hair layouts.
+            this._seed = (opts.seed | 0) || 0;
 
             // --- Tunables (settable at any time via setters) ---
             this._quality = opts.quality || "medium";
@@ -82,6 +84,7 @@
 
             // Extended look controls.
             this._colorCycleSpeed = 0;  // >0 rotates hue over time (per-frame bake)
+            this._rgbSpeed = 1;         // animation rate for rgbNeon (and any time-based mode)
             this._brightness = 1;       // master brightness (material multiply)
             this._audioGlow = 0;        // transient brightness from audio (set per-frame)
             this._audioPuff = 0;        // transient hair-volume boost from audio
@@ -102,7 +105,8 @@
             // average out, keeping the overall ball round.
             this._hairTangent = new Float32Array(MAX_HAIRS * 3);
             {
-                let s = 0x1234567 ^ 0x9E3779B9;
+                let s = (0x1234567 ^ 0x9E3779B9) + this._seed * 0x6D2B79F5 | 0;
+                s = s >>> 0; if (s === 0) s = 1;
                 const J = 0.03;
                 const rnd = function () {
                     s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
@@ -154,7 +158,8 @@
             // deterministic per-hair length scale in [0.80, 1.20].
             this._hairLengthScale = new Float32Array(MAX_HAIRS);
             {
-                let s = 0x9E3779B9 ^ 0xDEADBEEF; // fixed seed → identical layout each load
+                let s = ((0x9E3779B9 ^ 0xDEADBEEF) + this._seed * 0x85EBCA6B) >>> 0;
+                if (s === 0) s = 1;
                 for (let h = 0; h < MAX_HAIRS; h++) {
                     s ^= s << 13; s >>>= 0;
                     s ^= s >>> 17;
@@ -218,7 +223,7 @@
             this._colorDirty = true;
         }
         setHairLength(v) {
-            this._hairLength = Math.max(0.5, Math.min(8, v));
+            this._hairLength = Math.max(0.5, Math.min(12, v));
             // Re-init rest state so the new length takes immediate visual effect
             // (without this, hair would slowly "grow" via constraint relaxation).
             this._initRestState();
@@ -244,6 +249,7 @@
             this._colorDirty = true;
         }
         setColorCycleSpeed(v) { this._colorCycleSpeed = Math.max(0, Math.min(2, v)); this._colorDirty = true; }
+        setRgbSpeed(v) { this._rgbSpeed = Math.max(0, Math.min(4, v)); }
         setBrightness(v) { this._brightness = Math.max(0.1, Math.min(2, v)); }
         setAudioGlow(v) { this._audioGlow = Math.max(0, v); }
         setAudioPuff(v) { this._audioPuff = Math.max(0, v); }
@@ -309,6 +315,11 @@
             const rot = cycle > 0
                 ? Marimo.colorModes.makeHueRotator(time * cycle * Math.PI * 2)
                 : null;
+            // rgbNeon animates with the sampler's time arg; scale it by the
+            // RGB-speed control (computed AFTER the hue-cycle rotator so the
+            // two speeds stay independent). Gradient/rainbow samplers ignore
+            // the time arg, so this is a no-op for them.
+            const stime = time * this._rgbSpeed;
             const lightX = -1 / Math.sqrt(21), lightY = -4 / Math.sqrt(21), lightZ = -2 / Math.sqrt(21);
             const N = this._activeHairs;
             for (let h = 0; h < N; h++) {
@@ -325,11 +336,11 @@
                     const t = i / SEGMENTS;
                     let r, g, b;
                     if (unlit) {
-                        const c = sampler(t, h, time);
+                        const c = sampler(t, h, stime);
                         r = c.r; g = c.g; b = c.b;
                     } else {
                         const tipBoost = Math.pow(Math.max(0, ny), 4) * t;
-                        const c = sampler(Math.min(1, t + tipBoost * 0.6), h, time);
+                        const c = sampler(Math.min(1, t + tipBoost * 0.6), h, stime);
                         const k = 0.6 + 0.4 * diffuse;
                         r = c.r * k; g = c.g * k; b = c.b * k;
                     }

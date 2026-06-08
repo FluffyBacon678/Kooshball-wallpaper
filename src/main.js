@@ -36,7 +36,7 @@
         const limiter = new Marimo.PerformanceLimiter();
         const bloom = new Marimo.Bloom(renderer);
         let bloomEnabled = false;
-        const ball = new Marimo.MarimoBall(scene, { radius: 5 });
+        const ball = new Marimo.MarimoBall(scene, { radius: 4 });
         const fur = new Marimo.FurSystem(scene, ball, {
             quality: "medium",
             hairAmount: 1.0,
@@ -422,6 +422,7 @@
             setAudioReactivity: setAudioReactivity,
             setAudioReact: setAudioReact,
             setColorCycleSpeed: function (v) { fur.setColorCycleSpeed(v); },
+            setRgbSpeed: function (v) { fur.setRgbSpeed(v); },
             setBrightness: function (v) { fur.setBrightness(v); },
             setAdaptiveQuality: setAdaptiveQuality,
             setBloom: function (v) {

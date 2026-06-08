@@ -9,14 +9,14 @@
         "Relaxing"
     ],
     "visibility": "public",
-    "version": 13,
+    "version": 14,
     "general": {
         "properties": {
             "quality": {
                 "order": 1,
                 "text": "Quality preset",
                 "type": "combo",
-                "value": "high",
+                "value": "medium",
                 "options": [
                     {
                         "label": "Low (5k hairs)",
@@ -46,7 +46,7 @@
                 "order": 10,
                 "text": "Ball size",
                 "type": "slider",
-                "value": 5,
+                "value": 4,
                 "min": 2,
                 "max": 9,
                 "step": 0.1
@@ -66,7 +66,7 @@
                 "type": "slider",
                 "value": 3,
                 "min": 1,
-                "max": 7,
+                "max": 12,
                 "step": 0.05
             },
             "hairVolume": {
@@ -207,8 +207,17 @@
                 "max": 1,
                 "step": 0.01
             },
-            "brightness": {
+            "rgbSpeed": {
                 "order": 33,
+                "text": "RGB animation speed",
+                "type": "slider",
+                "value": 1,
+                "min": 0,
+                "max": 4,
+                "step": 0.05
+            },
+            "brightness": {
+                "order": 34,
                 "text": "Brightness",
                 "type": "slider",
                 "value": 1,
@@ -217,14 +226,14 @@
                 "step": 0.01
             },
             "customColor1": {
-                "order": 34,
-                "text": "Custom color (root)",
+                "order": 35,
+                "text": "Hair base color (Custom mode)",
                 "type": "color",
                 "value": "0.05 0.12 0.20"
             },
             "customColor2": {
-                "order": 35,
-                "text": "Custom color (tip)",
+                "order": 36,
+                "text": "Hair tip color (Custom mode)",
                 "type": "color",
                 "value": "0.85 0.95 1.00"
             },

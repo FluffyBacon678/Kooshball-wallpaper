@@ -149,6 +149,9 @@
             if (props.colorCycleSpeed !== undefined) {
                 if (ctx.setColorCycleSpeed) ctx.setColorCycleSpeed(Number(value(props.colorCycleSpeed)));
             }
+            if (props.rgbSpeed !== undefined) {
+                if (ctx.setRgbSpeed) ctx.setRgbSpeed(Number(value(props.rgbSpeed)));
+            }
             if (props.brightness !== undefined) {
                 if (ctx.setBrightness) ctx.setBrightness(Number(value(props.brightness)));
             }
