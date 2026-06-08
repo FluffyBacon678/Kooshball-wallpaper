@@ -46,8 +46,6 @@
             opts = opts || {};
             this._ball = ball;
             this._scene = scene;
-            // Per-instance seed so multiple marimos get distinct hair layouts.
-            this._seed = (opts.seed | 0) || 0;
 
             // --- Tunables (settable at any time via setters) ---
             this._quality = opts.quality || "medium";
@@ -105,8 +103,7 @@
             // average out, keeping the overall ball round.
             this._hairTangent = new Float32Array(MAX_HAIRS * 3);
             {
-                let s = (0x1234567 ^ 0x9E3779B9) + this._seed * 0x6D2B79F5 | 0;
-                s = s >>> 0; if (s === 0) s = 1;
+                let s = 0x1234567 ^ 0x9E3779B9;
                 const J = 0.03;
                 const rnd = function () {
                     s ^= s << 13; s >>>= 0; s ^= s >>> 17; s ^= s << 5; s >>>= 0;
@@ -158,8 +155,7 @@
             // deterministic per-hair length scale in [0.80, 1.20].
             this._hairLengthScale = new Float32Array(MAX_HAIRS);
             {
-                let s = ((0x9E3779B9 ^ 0xDEADBEEF) + this._seed * 0x85EBCA6B) >>> 0;
-                if (s === 0) s = 1;
+                let s = 0x9E3779B9 ^ 0xDEADBEEF; // fixed seed → identical layout each load
                 for (let h = 0; h < MAX_HAIRS; h++) {
                     s ^= s << 13; s >>>= 0;
                     s ^= s >>> 17;
