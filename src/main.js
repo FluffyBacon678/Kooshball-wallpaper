@@ -474,13 +474,17 @@
 
             // Grab test uses the perpendicular distance from the ball centre
             // to the picking ray — depth-independent, so a far ball is still
-            // grabbable. Release uses the same metric with a generous radius.
+            // grabbable.
             const rayDist = mouseRayDistanceToBall();
             const grabRadius = ball.baseRadius * 1.5;
-            const releaseRadius = ball.baseRadius * 4.0;
 
             if (mouseGrabbed) {
-                if (!mouseIsDown || rayDist > releaseRadius) {
+                // Release ONLY on mouse-up. We used to also release when the
+                // ball-to-cursor distance exceeded a threshold, but during a
+                // very fast drag the ball lerps behind the cursor and that gap
+                // tripped a false release ("the mouse let go"). While the
+                // button is held, keep holding no matter how fast you swing.
+                if (!mouseIsDown) {
                     mouseGrabbed = false;
                     ball.grabbed = false;
                     ball.notifyDisturbed();   // resume gravity; restart idle timer
@@ -498,13 +502,13 @@
                     // stays in the camera plane forever.
                     ball.velocity.z += (Math.random() - 0.5) * throwSpeed * 0.35;
                 } else {
-                    // Kinematically drag the ball in X-Y. We deliberately leave
-                    // Z alone: any depth velocity the ball was carrying is
-                    // preserved through the grab, so a quick grab-release on a
-                    // ball that was already moving in Z keeps that motion.
+                    // Kinematically drag the ball toward the cursor. A snappier
+                    // lerp keeps the ball close under a fast swing (less lag =
+                    // the throw direction matches the cursor). Z is left alone
+                    // so any depth motion carries through the grab.
                     const prevX = ball.position.x;
                     const prevY = ball.position.y;
-                    const lerp = Math.min(1, dt * 18);
+                    const lerp = Math.min(1, dt * 26);
                     ball.position.x += (mouseWorld.x - ball.position.x) * lerp;
                     ball.position.y += (mouseWorld.y - ball.position.y) * lerp;
                     const invDt = 1 / Math.max(0.001, dt);
