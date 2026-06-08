@@ -104,11 +104,11 @@ just open it while it's applied). Every setting below is exposed:
 
 | Section     | Setting                     | Default  | Notes |
 |-------------|-----------------------------|----------|-------|
-| Quality     | Quality preset              | High     | Low (5k) / Medium (14k) / High (28k) / Ultra (45k) hairs. Picks the strand-count ceiling. |
+| Quality     | Quality preset              | Medium   | Low (5k) / Medium (14k) / High (28k) / Ultra (45k) hairs. Picks the strand-count ceiling. |
 | Quality     | Adaptive quality            | On       | Auto-trims hair count to hold the target FPS on any hardware, and restores it when there's headroom. See **Performance**. |
-| Marimo      | Ball size                   | 5.0      | Sphere radius in scene units. |
+| Marimo      | Ball size                   | 4.0      | Sphere radius in scene units (2–9). |
 | Marimo      | Hair amount                 | 1.0      | Multiplier on the quality preset's strand count. |
-| Marimo      | Hair length                 | 3.0      | Strand length in scene units. |
+| Marimo      | Hair length                 | 3.0      | Strand length in scene units (1–12 — crank it for a long shaggy marimo). |
 | Marimo      | Hair volume                 | 0.6      | "Puffiness" — minimum radius per segment. Lower = more gravity droop. |
 | Motion      | Gravity (ball + hair)       | 0.6      | Pulls the ball *and* the hair tips downward. 0 = float in place. |
 | Motion      | Auto-rotation speed         | 0.0      | Constant body spin. Default 0 (no auto-spin, matching the original). |
@@ -122,9 +122,10 @@ just open it while it's applied). Every setting below is exposed:
 | Color       | RGB rainbow mode            | Off      | Overrides color mode with the animated "FEVER" rainbow. |
 | Color       | Color mode                  | Natural  | Natural / RGB neon / Rainbow (per strand) / Blue-cyan / Purple-pink / Sunset / Fire / Ocean / Lavender / Gold / Autumn / Ice / Monochrome / Custom / Follow Windows accent / WE scheme color. |
 | Color       | Color cycle speed           | 0.0      | >0 slowly rotates the hue of any palette over time. |
+| Color       | RGB animation speed         | 1.0      | Speed of the RGB-neon colour animation (0 = frozen, 4 = fast). |
 | Color       | Brightness                  | 1.0      | Master brightness multiplier for the whole marimo. |
-| Color       | Custom color (root)         | Dark blue| Used when Color mode = Custom (dragging it auto-switches to Custom). |
-| Color       | Custom color (tip)          | Light cyan| Used when Color mode = Custom. |
+| Color       | Hair base color (Custom)    | Dark blue| Used when Color mode = Custom (dragging it auto-switches to Custom). |
+| Color       | Hair tip color (Custom)     | Light cyan| Used when Color mode = Custom. |
 | Look        | Background color            | Near-black| Sets the clear color and tints the body sphere. |
 | Look        | Show ground shadow          | On       | Soft vignette under the ball. |
 | Look        | Camera distance             | 1.0      | 0.6 = camera closer (ball bigger), 1.8 = farther (ball smaller). |
