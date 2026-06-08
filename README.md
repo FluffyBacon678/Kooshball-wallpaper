@@ -133,6 +133,7 @@ just open it while it's applied). Every setting below is exposed:
 | Look        | Bloom strength              | 0.8      | How intense the glow is (only when Bloom is on). |
 | Interaction | Mouse interaction           | On       | Enables grab-and-throw + scroll-to-depth (see **Controls** below). |
 | Interaction | Mouse breeze                | Off      | Lightly nudges the ball as you move the mouse, even without grabbing it. |
+| Interaction | Mouse moves ball            | Off      | The cursor acts like a solid object — move it into the ball to push / bat it around, no clicking or grabbing needed. |
 | RGB         | RGB sync                    | Off      | Off / Bottom bar / Ambilight. Edge color bars for hardware sync (see **RGB hardware sync**). |
 | Audio       | Audio reactivity            | 0.0      | Master sensitivity. 0 = off. The reactions below only do anything when this is > 0. |
 | Audio       | Audio: bounce               | On       | Bass jumps the ball, treble spins it. |
@@ -155,6 +156,8 @@ When **Mouse interaction** is on:
   Release to throw; it carries your drag velocity, then falls and bounces.
 - **Scroll wheel over the ball** — push it toward (scroll up) or away from
   (scroll down) the camera, giving explicit control over the 3D depth axis.
+- **Mouse moves ball** (optional toggle) — turns the cursor into a solid
+  bat: move it into the ball to shove or swat it around without clicking.
 - The ball is bounded by an invisible box (floor, ceiling, four walls)
   scaled to your screen, so it can never escape the frame.
 - Press **D** anytime to toggle the in-page debug overlay.

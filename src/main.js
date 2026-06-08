@@ -188,6 +188,9 @@
         // "Mouse breeze": gently nudge the ball with mouse movement even when
         // the cursor isn't over (grabbing) the ball. Toggled by a user prop.
         let mouseFollow = false;
+        // "Mouse moves ball": the cursor acts like a small solid that bats /
+        // pushes the ball when it moves into it — no clicking/grabbing needed.
+        let mousePush = false;
 
         function setMouseEnabled(v) {
             mouseEnabled = !!v;
@@ -198,6 +201,7 @@
             if (!mouseEnabled) mouseIsDown = false;
         }
         function setMouseFollow(v) { mouseFollow = !!v; }
+        function setMousePush(v) { mousePush = !!v; }
 
         // Project the screen-space cursor onto an arbitrary world plane z=planeZ.
         // Using the ball's current z (instead of a fixed z=0) keeps grab/drag
@@ -237,7 +241,8 @@
         }
 
         function onMouseMove(ev) {
-            if (!mouseEnabled) return;
+            // Track the cursor regardless of the grab toggle so the "mouse
+            // moves ball" / breeze effects can work on their own switches.
             mouseClientX = ev.clientX; mouseClientY = ev.clientY;
             mouseHasSample = true;
         }
@@ -410,6 +415,7 @@
             refit: refit,
             setMouseEnabled: setMouseEnabled,
             setMouseFollow: setMouseFollow,
+            setMousePush: setMousePush,
             setDvdMode: function (v) { ball.setDvdMode(v); },
             setDvdSpeed: function (v) { ball.setDvdSpeed(v); },
             setIdleDrift: function (v) { ball.setIdleDrift(v); },
@@ -458,10 +464,11 @@
         let debugAccum = 0;
 
         function applyMouseToBall(dt) {
-            if (!mouseEnabled || !mouseHasSample) return;
+            if (!mouseHasSample) return;
+            if (!mouseEnabled && !mousePush && !mouseFollow) return;
 
             // Project the cursor onto the ball's CURRENT depth plane so drag
-            // tracking and the breeze work no matter how far the ball has
+            // tracking, push and breeze work no matter how far the ball has
             // travelled toward/away from the camera.
             projectMouseToWorld(mouseClientX, mouseClientY, ball.position.z, mouseWorld);
 
@@ -505,20 +512,45 @@
                     ball.velocity.y = (ball.position.y - prevY) * invDt;
                     // velocity.z untouched — physics carries it
                 }
-            } else if (mouseIsDown && rayDist < grabRadius) {
+            } else if (mouseEnabled && mouseIsDown && rayDist < grabRadius) {
                 mouseGrabbed = true;
                 ball.grabbed = true;
                 ball.notifyDisturbed();
-            } else if (mouseFollow) {
-                // Mouse breeze: convert this frame's cursor movement into a
-                // light impulse on the ball, even though it isn't grabbed.
-                // Clamped so a fast flick across the screen can't launch it.
-                const mvx = THREE.MathUtils.clamp(mouseWorld.x - mouseWorldPrev.x, -4, 4);
-                const mvy = THREE.MathUtils.clamp(mouseWorld.y - mouseWorldPrev.y, -4, 4);
-                ball.applyImpulse(mvx * 0.22, mvy * 0.22, 0, 0.008);
+            } else {
+                // Not grabbing this frame — apply the no-grab effects.
+                if (mousePush) {
+                    // The cursor behaves like a small solid object: when it
+                    // overlaps the ball, shove the ball to the cursor's edge
+                    // (positional, feels solid) and impart the cursor's motion
+                    // so a quick swipe bats it away. No grab required.
+                    const dx = ball.position.x - mouseWorld.x;
+                    const dy = ball.position.y - mouseWorld.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const pushR = ball.baseRadius * 1.15;
+                    if (dist < pushR && dist > 1e-4) {
+                        const nx = dx / dist, ny = dy / dist;   // cursor → ball
+                        ball.position.x += nx * (pushR - dist);
+                        ball.position.y += ny * (pushR - dist);
+                        const invDt = 1 / Math.max(0.001, dt);
+                        const cvx = THREE.MathUtils.clamp((mouseWorld.x - mouseWorldPrev.x) * invDt, -30, 30);
+                        const cvy = THREE.MathUtils.clamp((mouseWorld.y - mouseWorldPrev.y) * invDt, -30, 30);
+                        ball.velocity.x = cvx * 0.6 + nx * 2.5;
+                        ball.velocity.y = cvy * 0.6 + ny * 2.5;
+                        ball.angularVelocity.z += -cvx * 0.04;
+                        ball.angularVelocity.x +=  cvy * 0.04;
+                        ball.notifyDisturbed();
+                    }
+                }
+                if (mouseFollow) {
+                    // Mouse breeze: convert this frame's cursor movement into a
+                    // light global impulse, even when the cursor isn't on the ball.
+                    const mvx = THREE.MathUtils.clamp(mouseWorld.x - mouseWorldPrev.x, -4, 4);
+                    const mvy = THREE.MathUtils.clamp(mouseWorld.y - mouseWorldPrev.y, -4, 4);
+                    ball.applyImpulse(mvx * 0.22, mvy * 0.22, 0, 0.008);
+                }
             }
 
-            // Track cursor world position for the next frame's breeze delta.
+            // Track cursor world position for the next frame's deltas.
             mouseWorldPrev.copy(mouseWorld);
         }
 

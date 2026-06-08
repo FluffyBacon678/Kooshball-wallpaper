@@ -9,7 +9,7 @@
         "Relaxing"
     ],
     "visibility": "public",
-    "version": 14,
+    "version": 15,
     "general": {
         "properties": {
             "quality": {
@@ -285,14 +285,20 @@
                 "type": "bool",
                 "value": false
             },
-            "dvdMode": {
+            "mousePush": {
                 "order": 52,
+                "text": "Mouse moves ball (cursor pushes / bats it)",
+                "type": "bool",
+                "value": false
+            },
+            "dvdMode": {
+                "order": 53,
                 "text": "DVD bounce (drift edge to edge)",
                 "type": "bool",
                 "value": false
             },
             "dvdSpeed": {
-                "order": 53,
+                "order": 54,
                 "text": "DVD bounce speed",
                 "type": "slider",
                 "value": 6,
@@ -301,13 +307,13 @@
                 "step": 0.5
             },
             "idleDrift": {
-                "order": 54,
+                "order": 55,
                 "text": "Idle drift (free-float when left alone)",
                 "type": "bool",
                 "value": true
             },
             "idleDriftSpeed": {
-                "order": 55,
+                "order": 56,
                 "text": "Idle drift speed",
                 "type": "slider",
                 "value": 2.5,
