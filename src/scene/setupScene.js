@@ -70,7 +70,10 @@
         let dist = frameRadius / Math.tan(vFov / 2);
         const hFov = 2 * Math.atan(Math.tan(vFov / 2) * aspect);
         const distH = frameRadius / Math.tan(hFov / 2);
-        dist = Math.max(dist, distH) * 1.25 * zoom;
+        // 1.45 padding leaves room around the ball so it can be thrown /
+        // bounce / drift across the frame (including up and down) instead of
+        // filling the screen and getting pinned by the on-screen clamp.
+        dist = Math.max(dist, distH) * 1.45 * zoom;
         const rad = elevationDeg * Math.PI / 180;
         camera.position.set(0, dist * Math.sin(rad), dist * Math.cos(rad));
         camera.lookAt(0, lookAtY, 0);

@@ -569,20 +569,31 @@
         const _clTmp  = new THREE.Vector3();
         const _clTgt  = new THREE.Vector3();
         // The 6 extreme surface offsets of the fuzzy ball (along world axes).
-        // Projecting all 6 captures the true perspective silhouette — the
-        // toward-camera point projects largest — so the box is exact, not an
-        // approximation.
+        // ±X/±Y are sampled at the full hair reach (they define the visible
+        // silhouette edge). ±Z (toward/away the camera) are sampled at the
+        // BODY radius only: hair pointing at the camera is seen end-on and is
+        // visually negligible, but with the elevated camera those points
+        // project far down/up the screen and used to inflate the vertical
+        // margins so much the ball could barely move up or down.
         const _clAxes = [[1,0,0],[-1,0,0],[0,1,0],[0,-1,0],[0,0,1],[0,0,-1]];
         function clampBallToViewport() {
-            const visR = ball.baseRadius + fur._hairLength * 1.15;
+            // Clamp the BODY plus a little hair to the screen, not the full
+            // fuzzy reach — otherwise the dense hair nearly fills the frame
+            // and the ball can barely travel up/down before tips touch an
+            // edge (the vertical "snap back"). Letting the wispy outer hair
+            // clip at the extreme edges looks natural and frees the ball to
+            // roam corner to corner.
+            const clampR = ball.baseRadius + fur._hairLength * 0.15;
+            const bodyR = ball.baseRadius;
             _clProj.copy(ball.position).project(camera);
             let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
             for (let k = 0; k < 6; k++) {
                 const a = _clAxes[k];
+                const rr = (k < 4) ? clampR : bodyR;   // ±Z at body radius
                 _clTmp.set(
-                    ball.position.x + a[0] * visR,
-                    ball.position.y + a[1] * visR,
-                    ball.position.z + a[2] * visR
+                    ball.position.x + a[0] * rr,
+                    ball.position.y + a[1] * rr,
+                    ball.position.z + a[2] * rr
                 ).project(camera);
                 if (_clTmp.x < minX) minX = _clTmp.x;
                 if (_clTmp.x > maxX) maxX = _clTmp.x;
@@ -592,19 +603,27 @@
             // Asymmetric extents from center to each silhouette edge (NDC),
             // with a tiny safety pad. Clamp the center so every edge stays
             // inside [-1, 1].
-            const S = 1.06;
-            let leftE  = (_clProj.x - minX) * S;
-            let rightE = (maxX - _clProj.x) * S;
-            let downE  = (_clProj.y - minY) * S;
-            let upE    = (maxY - _clProj.y) * S;
-            // If the ball is too big to fit on an axis, center it there.
-            if (leftE + rightE >= 2) { leftE = rightE = 0.999; }
-            if (downE + upE     >= 2) { downE = upE     = 0.999; }
+            const S = 1.03;
+            const leftE  = (_clProj.x - minX) * S;
+            const rightE = (maxX - _clProj.x) * S;
+            const downE  = (_clProj.y - minY) * S;
+            const upE    = (maxY - _clProj.y) * S;
+            // If the silhouette is larger than the screen on an axis (zoomed
+            // in / very long hair) there is NO position that fits — skip
+            // clamping that axis entirely instead of forcing it to the screen
+            // centre. (The old centering read as the ball "snapping back to
+            // the middle" whenever you dragged it up or down while zoomed.)
+            const clampX = (leftE + rightE) < 2;
+            const clampY = (downE + upE) < 2;
             let nx = _clProj.x, ny = _clProj.y, hitX = 0, hitY = 0;
-            if (nx - leftE < -1)      { nx = -1 + leftE;  hitX = -1; }
-            else if (nx + rightE > 1) { nx =  1 - rightE; hitX =  1; }
-            if (ny - downE < -1)      { ny = -1 + downE;  hitY = -1; }
-            else if (ny + upE > 1)    { ny =  1 - upE;    hitY =  1; }
+            if (clampX) {
+                if (nx - leftE < -1)      { nx = -1 + leftE;  hitX = -1; }
+                else if (nx + rightE > 1) { nx =  1 - rightE; hitX =  1; }
+            }
+            if (clampY) {
+                if (ny - downE < -1)      { ny = -1 + downE;  hitY = -1; }
+                else if (ny + upE > 1)    { ny =  1 - upE;    hitY =  1; }
+            }
             if (!hitX && !hitY) return;
             // DVD mode bounces losslessly (perfect reflection) so the drift
             // never decays; otherwise use the ball's restitution.

@@ -164,7 +164,13 @@
             this.wallZFar  = Math.max(this.baseRadius * 3, visibleHalfWidth * 1.4);
             const vHalf = Math.max(this.baseRadius + 1, visibleHalfHeight - this.baseRadius);
             this.floorY = -vHalf;
-            this.ceilingY =  vHalf;
+            // The top of the frame is governed by the on-screen viewport
+            // clamp in main.js (it knows the hair's projected extent). Keep
+            // the world ceiling well above the visible frame so it never
+            // binds first — with it at vHalf, upward throws died at ~1 world
+            // unit of rise while horizontal travel was free, which is what
+            // made vertical motion feel "snapped back".
+            this.ceilingY = vHalf * 3;
         }
 
         /**
