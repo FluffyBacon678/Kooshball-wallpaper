@@ -35,8 +35,8 @@
             this.physicsEnabled = true;
             this.gravity = 9.0;            // world-units / s^2
             this.restitution = 0.6;        // floor + walls bounce
-            this.linearDamping = 0.35;     // per-second exp damping on velocity — low so throws carry
-            this.angularDamping = 0.5;     // per-second exp damping on angular velocity — spins linger
+            this.linearDamping = 0.18;     // per-second exp damping on velocity — low so momentum carries far
+            this.angularDamping = 0.28;    // per-second exp damping on angular velocity — spins linger
 
             // When `true` the mouse is dragging the ball: main.js drives
             // position + velocity directly, physics is skipped this frame.
@@ -225,7 +225,10 @@
                 this._idleT += dt;
                 let idleF = 0;
                 if (this.idleDrift && this.idleDriftSpeed > 0) {
-                    idleF = Math.max(0, Math.min(1, (this._idleT - 1.5) / 2.5));
+                    // ~3 s grace after any interaction so a throw keeps its
+                    // momentum (full gravity + bounce) before the gentle idle
+                    // float eases in over the following ~3 s.
+                    idleF = Math.max(0, Math.min(1, (this._idleT - 3.0) / 3.0));
                 }
 
                 // Gravity (faded out as idle drift engages).
@@ -284,12 +287,14 @@
                     this.velocity.z += -this.angularVelocity.x * this.baseRadius * roll;
                     this.angularVelocity.x *= (1 - roll);
                     this.angularVelocity.z *= (1 - roll);
-                    // Mild kinetic friction on the lateral velocity itself.
-                    this.velocity.x *= 0.94;
-                    this.velocity.z *= 0.94;
+                    // Light kinetic friction on the lateral velocity — low so
+                    // the ball keeps rolling/sliding along the floor a while
+                    // before coming to rest.
+                    this.velocity.x *= 0.975;
+                    this.velocity.z *= 0.975;
                     if (Math.abs(this.velocity.y) < 0.3) this.velocity.y = 0;
                     // Y-axis spin loses a little energy too.
-                    this.angularVelocity.y *= 0.9;
+                    this.angularVelocity.y *= 0.96;
                 }
 
                 // Side walls (X).
